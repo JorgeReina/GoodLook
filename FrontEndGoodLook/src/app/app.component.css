@@ -1,14 +1,9 @@
-.header,
 .footer {
-  background-color: aqua;
+  background-color: #0f6c3a;
   width: 100vw;
   padding-left: 8px;
-}
 
-.header {
-  position: fixed;
-  left: 0;
-  top: 0;
+  color: white;
 }
 
 .footer {

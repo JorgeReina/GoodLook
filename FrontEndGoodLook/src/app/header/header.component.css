@@ -1,0 +1,14 @@
+.header{
+  background-color: #0f6c3a;
+  color: white;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  padding-left: 8px;
+}
+
+.icono {
+  padding-top: 15px;
+}

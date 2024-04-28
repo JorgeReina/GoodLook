@@ -3,7 +3,8 @@ import { RouterModule, Routes } from '@angular/router';
 import { BodyComponent } from './body/body.component'
 
 const routes: Routes = [
-  { path: '/', component: BodyComponent}
+  { path: 'inicio', component: BodyComponent},
+  { path: '', redirectTo: 'inicio', pathMatch: 'full'},
 ];
 
 @NgModule({

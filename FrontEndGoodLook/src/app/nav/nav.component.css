@@ -1,0 +1,18 @@
+.menu {
+  padding: 15PX;
+}
+
+
+a{
+  padding: 10px;
+  background-color: #13d46b;
+  color: black;
+}
+
+a:hover {
+  background-color: #0b8a45;
+}
+
+.menu {
+  
+}
