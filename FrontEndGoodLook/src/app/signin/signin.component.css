@@ -1,0 +1,15 @@
+.registro {
+  border-style: solid;
+  border-radius: 3%;
+  border-color: #0f6c3a;
+  box-shadow: 0 0 10px #0f6c3a,
+              0 0 10px #0aaf55;
+  padding: 10px;
+  margin-top: 15px;
+  margin-left: 25%;
+  margin-right: 25%;
+}
+
+.plantilla {
+  text-align: center;
+}
