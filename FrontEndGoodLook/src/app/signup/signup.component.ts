@@ -12,7 +12,7 @@ import { User } from 'src/model/User';
 })
 export class SignupComponent {
 
-  API_URL : string = 'https://localhost:7234/';
+  /*API_URL : string = 'https://localhost:7234/';
 
   myForm: FormGroup;
 
@@ -43,7 +43,7 @@ export class SignupComponent {
     } else {
       alert('Registro incorrecto, compruebe su contraseña');
     }
-  }
+  }*/
   
 }
 
