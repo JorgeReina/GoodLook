@@ -1,18 +1,25 @@
-.menu {
-  padding: 15PX;
+nav {
+  padding: 15px;
+  display: flex;
 }
 
-
-a{
+.group1{
   padding: 10px;
   background-color: #13d46b;
   color: black;
 }
 
-a:hover {
+.group1:hover {
   background-color: #0b8a45;
 }
 
-.menu {
-  
+.signin {
+  padding: 10px;
+  background-color: #13d46b;
+  color: black;
+  margin-left: 80%;
+}
+
+.signin:hover {
+  background-color: #0b8a45;
 }

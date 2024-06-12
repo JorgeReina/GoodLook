@@ -3,7 +3,7 @@ import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
 import { Router } from '@angular/router';
-import { User } from 'src/model/User';
+import { GoodlookService } from '../goodlook.service';
 
 @Component({
   selector: 'app-signup',
@@ -12,11 +12,11 @@ import { User } from 'src/model/User';
 })
 export class SignupComponent {
 
-  /*API_URL : string = 'https://localhost:7234/';
+  API_URL : string = 'https://localhost:7234/';
 
   myForm: FormGroup;
-
-  users: User[] = [];
+  email: string = '';
+  password: string='';
 
   constructor(private formBuilder: FormBuilder, private httpClient: HttpClient,private router: Router) {
     this.myForm = this.formBuilder.group({
@@ -27,7 +27,7 @@ export class SignupComponent {
     });
   }
 
-  async uploadRegister() {
+  async signUser() {
     const formData = new FormData();
     formData.append('name', this.myForm.get('nombre')?.value);
     formData.append('email', this.myForm.get('email')?.value);
@@ -35,7 +35,7 @@ export class SignupComponent {
 
     if(this.myForm.get('confirmPassword')?.value == this.myForm.get('password')?.value){
   
-    const request$ = this.httpClient.post<string>(`${this.API_URL}api/User/signup/`, formData);
+    const request$ = this.httpClient.post<string>(`${this.API_URL}api/User/signup`, formData);
     await lastValueFrom(request$);
   
     alert('Registro exitoso.');
@@ -43,7 +43,6 @@ export class SignupComponent {
     } else {
       alert('Registro incorrecto, compruebe su contraseña');
     }
-  }*/
-  
+  }
 }
 

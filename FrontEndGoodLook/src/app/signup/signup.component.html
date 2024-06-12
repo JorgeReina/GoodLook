@@ -1,9 +1,19 @@
 <div class="registro">
-  <form class="plantilla">
-    <p>Nombre: <input type="text" placeholder="Jorge" /></p>
-    <p>E-mail: <input type="text" placeholder="ejemplo@ejemplo.com" /></p>
-    <p>Constraseña: <input type="text" placeholder="Constraseña" /></p>
-    <p>Repetir Constraseña: <input type="text" /></p>
-    <p>¿Ya estás registrado? <a routerLink="/sign-in">Inicie sesión</a></p>
+  <form class="plantilla" [formGroup]="myForm" (ngSubmit)="signUser()">
+    <h2>Registro</h2>
+    <label for="nombre">Nombre:</label>
+    <input class="registro-input" type="text" formControlName="nombre" placeholder="Ingrese su nombre"> <br>
+
+    <label for="email">Correo electrónico:</label>
+    <input class="registro-input" type="email" formControlName="email" placeholder="Ingrese su correo electrónico"> <br>
+
+    <label for="password">Contraseña:</label>
+    <input class="registro-input" type="password" formControlName="password" placeholder="Ingrese su contraseña"> <br>
+
+    <label for="confirmPassword">Repetir contraseña:</label>
+    <input class="registro-input" type="password" formControlName="confirmPassword" placeholder="Repita su contraseña"> <br>
+  
+    <button class="registro-boton" type="submit" [disabled]="myForm.invalid">Registrar</button>
   </form>
+  <p>¿Ya tienes una cuenta? <a routerLink="/sign-in">Pulse aquí</a></p>
 </div>

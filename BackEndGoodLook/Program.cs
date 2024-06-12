@@ -1,6 +1,8 @@
 
 using BackEndGoodLook.Models.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace BackEndGoodLook
 {
@@ -21,6 +23,23 @@ namespace BackEndGoodLook
                 => options.UseMySQL(builder.Configuration.GetConnectionString("goodLook"))
             );
 
+            builder.Services.AddAuthentication().AddJwtBearer(options =>
+            {
+                string Key = Environment.GetEnvironmentVariable("JWT_KEY");
+
+                options.TokenValidationParameters = new TokenValidationParameters()
+                {
+                    //  Validar el emisor del token.
+                    ValidateIssuer = false,
+
+                    //  Audiencia
+                    ValidateAudience = false,
+
+                    //  Idicamos la clave
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key))
+                };
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -35,12 +54,21 @@ namespace BackEndGoodLook
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
+
+                //Uso de CORS
+                app.UseCors(config => config
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .SetIsOriginAllowed(origin => true)
+                    .AllowCredentials());
+
             }
 
             app.UseHttpsRedirection();
 
+            // JWT
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

@@ -1,11 +1,12 @@
 <div class="registro">
-  <form class="plantilla">
-    <p>E-mail:</p>
-    <input type="text" placeholder="UserName">
-    <br>
-    <p>Constraseña:</p>
-    <input type="text" placeholder="PassWord">
-    <br>
-    <p>¿No estas registrado? <a routerLink="/sign-up">Pulse aquí</a></p>
+  <form class="plantilla" [formGroup]="myForm" (ngSubmit)="signInUser()">
+    <h2>Inicia sesión</h2>
+    <input type="text" formControlName="email" class="form-inputs" placeholder="E-mail">
+    <input type="password" formControlName="password" class="form-inputs" placeholder="Contraseña">
+    <div style="display: flex;">
+      <input type="checkbox" formControlName="recordar" class="form-inputs"><a>Recordar credenciales?</a>
+    </div>
+    <input type="submit" class="botonInicio" value="Iniciar sesión">
   </form>
+  <p>¿No estas registrado? <a routerLink="/sign-up">Pulse aquí</a></p>
 </div>
