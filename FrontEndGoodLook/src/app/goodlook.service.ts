@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs/internal/Observable';
 import { User } from 'src/model/User';
@@ -12,8 +12,12 @@ export class GoodlookService {
 
   API_URL : string = 'https://localhost:7234/';
 
-  public getListUser() {
-    
+  public getListUser(token: string): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get<any>(`${this.API_URL}api/User/userlist`, {headers})
   }
 
   public signUser(user: User): Observable<string> {

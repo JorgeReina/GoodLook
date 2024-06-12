@@ -1,1 +1,6 @@
-<p>profile works!</p>
+<div *ngIf="data; else loading">
+  <pre>{{ data | json }}</pre>
+</div>
+<ng-template #loading>
+  <p>Cargando datos...</p>
+</ng-template>

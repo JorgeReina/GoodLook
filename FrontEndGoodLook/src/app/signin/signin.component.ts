@@ -42,7 +42,7 @@ export class SigninComponent {
       }else{
         this.setSession(event.stringToken,event.id);
       }
-      this.router.navigate(['/']).then(() => {
+      this.router.navigate(['/profile']).then(() => {
         window.location.href = window.location.href;
       });
     }catch(error){
