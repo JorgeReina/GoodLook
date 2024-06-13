@@ -1,6 +1,33 @@
 <div *ngIf="data; else loading">
-  <pre>{{ data | json }}</pre>
+
+  <div>
+    <img src="" alt="">
+  </div>
+
+  <div>
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Rol</th>
+      </tr>
+      <tr>
+        <td>{{data.name}}</td>
+        <td>{{data.email}}</td>
+        <td>{{data.rol}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div>
+    <button (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
+  </div>
+
+  <div>
+    <button (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
+  </div>
+
 </div>
 <ng-template #loading>
-  <p>Cargando datos...</p>
+  <p>You need to log in to view your profile</p>
 </ng-template>

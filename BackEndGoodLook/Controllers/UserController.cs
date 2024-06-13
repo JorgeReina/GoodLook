@@ -37,9 +37,32 @@ public class UserController : ControllerBase
 
     [Authorize(Roles = "user")]
     [HttpGet("userlist")]
-    public IEnumerable<UserSignDto> GetUser()
+    public IEnumerable<UserSignDto> GetUsers()
     {
         return _goodLookContext.Users.Select(ToDto);
+    }
+
+    [Authorize(Roles = "user")]
+    [HttpGet("userget")]
+    public ActionResult<UserSignDto> GetUser(int id)
+    {
+        var user = _goodLookContext.Users.FirstOrDefault(u => u.Id == id);
+
+        if (user == null)
+        {
+            return NotFound(); 
+        }
+
+        var userSignDto = new UserSignDto
+        {
+            // Mapear las propiedades necesarias desde User a UserSignDto
+            Name = user.Name,
+            Email = user.Email,
+            Rol = user.Rol,
+
+        };
+
+        return Ok(userSignDto);
     }
 
     [HttpPost("signup")]
@@ -110,6 +133,63 @@ public class UserController : ControllerBase
             }
         }
         return Unauthorized("Usuario no existe");
+    }
+
+    [Authorize(Roles = "user")]
+    [HttpPost("updateUser")]
+    public async Task<bool> Update([FromForm] string name, [FromForm] string email, [FromForm] string password, [FromForm] int userId)
+    {
+
+        var user = _goodLookContext.Users.FirstOrDefault(p => p.Id == userId);
+
+
+        if (!user.Name.Equals(name) && name != null)
+        {
+            user.Name = name;
+        }
+
+        if (!user.Email.Equals(email) && email != null)
+        {
+            user.Email = email;
+        }
+
+        if (!user.Password.Equals(password) && password != null)
+        {
+            string hashedPassword = passwordHasher.HashPassword(name, password);
+            user.Password = hashedPassword;
+        }
+
+        _goodLookContext.Users.Update(user);
+        await _goodLookContext.SaveChangesAsync();
+
+        return true;
+
+    }
+
+    [Authorize(Roles = "user")]
+    [HttpDelete("deleteUser")]
+    public IActionResult DeleteUser(int userId)
+    {
+        try
+        {
+            // Buscar el usuario en la base de datos
+            var userToDelete = _goodLookContext.Users.FirstOrDefault(user => user.Id == userId);
+
+            if (userToDelete == null)
+            {
+                return NotFound($"Usuario con ID {userId} no encontrado");
+            }
+
+            // Eliminar el usuario
+            _goodLookContext.Users.Remove(userToDelete);
+            _goodLookContext.SaveChanges();
+
+            return Ok(new { Message = "Usuario eliminado con éxito" });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { Error = $"Error al eliminar el usuario: {ex.Message}" });
+        }
     }
 
 

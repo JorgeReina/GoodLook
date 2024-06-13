@@ -17,7 +17,16 @@ export class GoodlookService {
       'Authorization': `Bearer ${token}`
     });
 
-    return this.http.get<any>(`${this.API_URL}api/User/userlist`, {headers})
+    return this.http.get<any>(`${this.API_URL}api/User/userlist`, { headers })
+  }
+
+
+  public getUserById(id: any, token: string): Observable<User> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get<any>(`${this.API_URL}api/User/userget?id=${id}`, { headers })
   }
 
   public signUser(user: User): Observable<string> {
@@ -34,4 +43,14 @@ export class GoodlookService {
 
     return this.http.post<string>(`${this.API_URL}api/User/signup`, user2);
   }
+
+
+  public deleteUser(id: any, token: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.delete(`${this.API_URL}api/User/deleteUser?userId=${id}`, { headers });
+  }
+
 }

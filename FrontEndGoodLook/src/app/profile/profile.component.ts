@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { GoodlookService } from '../goodlook.service';
+import { User } from 'src/model/User';
 
 @Component({
   selector: 'app-profile',
@@ -8,14 +9,15 @@ import { GoodlookService } from '../goodlook.service';
 })
 export class ProfileComponent implements OnInit {
 
-  data: any;
-  token: string | null= sessionStorage.getItem('JWT'); 
+  data!: User;
+  token: string | null= localStorage.getItem("JWT") || sessionStorage.getItem('JWT');
+  id: string | null = localStorage.getItem("ID") || sessionStorage.getItem('ID');
 
   constructor(private goodLook: GoodlookService) {}
 
   ngOnInit(): void {
     if (this.token) {
-      this.goodLook.getListUser(this.token).subscribe(
+      this.goodLook.getUserById(this.id, this.token).subscribe(
         (response) => {
           this.data = response;
         },
@@ -25,8 +27,29 @@ export class ProfileComponent implements OnInit {
       );
     } else {
       console.error('No se encontró el token');
-      // Puedes manejar el caso donde el token es null aquí
     }
+  }
+
+  deleteUser() {
+    this.goodLook.deleteUser(this.id, this.token).subscribe(
+      response => {
+        console.log('Usuario eliminado con éxito', response);
+      },
+      error => {
+        console.error('Error al eliminar el usuario', error);
+      }
+    );
+  }
+
+  closeSession() {
+    sessionStorage.removeItem("JWT");
+    sessionStorage.removeItem("ID");
+    localStorage.removeItem("JWT");
+    localStorage.removeItem("ID");
+  }
+
+  reloadPage() {
+    window.location.reload();
   }
 
 }
