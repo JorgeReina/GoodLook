@@ -26,10 +26,34 @@ export class GoodlookService {
       'Authorization': `Bearer ${token}`
     });
 
-    return this.http.get<any>(`${this.API_URL}api/User/userget?id=${id}`, { headers })
+    return this.http.get<any>(`${this.API_URL}api/User/getuser?id=${id}`, { headers })
   }
 
-  public signUser(user: User): Observable<string> {
+  public deleteUser(id: any, token: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.delete(`${this.API_URL}api/User/deleteUser?userId=${id}`, { headers });
+  }
+
+  public createBarber(token: any, formData: FormData): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.post<any>(`${this.API_URL}api/Admin/createBarber`, formData, { headers });
+  }
+
+  public getBarberList(token: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get<any>(`${this.API_URL}api/Admin/barberList`, { headers })
+  }
+
+  /*public signUser(user: User): Observable<string> {
 
     const name = "Jorge";
     const email = "ejemplo@ejemplo.com"
@@ -42,15 +66,6 @@ export class GoodlookService {
     };
 
     return this.http.post<string>(`${this.API_URL}api/User/signup`, user2);
-  }
-
-
-  public deleteUser(id: any, token: any): Observable<any> {
-    const headers = new HttpHeaders({
-      'Authorization': `Bearer ${token}`
-    });
-
-    return this.http.delete(`${this.API_URL}api/User/deleteUser?userId=${id}`, { headers });
-  }
+  }*/
 
 }

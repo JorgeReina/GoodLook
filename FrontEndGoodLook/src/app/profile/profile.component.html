@@ -23,11 +23,52 @@
     <button (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
   </div>
 
-  <div>
+  <div div *ngIf="data?.rol === 'user'; else notUser">
     <button (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
   </div>
 
+  <div class="registro" div *ngIf="data?.rol === 'admin'; else notUser">
+    <form class="plantilla" [formGroup]="myForm" (ngSubmit)="createBarber()">
+      <h2>Create New Barber</h2>
+      <label for="nombre">Name:</label>
+      <input class="registro-input" type="text" formControlName="nombre" placeholder="Ingrese su nombre"> <br>
+  
+      <label for="email">Email:</label>
+      <input class="registro-input" type="email" formControlName="email" placeholder="Ingrese su correo electrónico"> <br>
+  
+      <label for="password">Password:</label>
+      <input class="registro-input" type="password" formControlName="password" placeholder="Ingrese su contraseña"> <br>
+  
+      <label for="confirmPassword">Repeat Password:</label>
+      <input class="registro-input" type="password" formControlName="confirmPassword" placeholder="Repita su contraseña"> <br>
+    
+      <button class="registro-boton" type="submit" [disabled]="myForm.invalid" (click)="reloadPage">Create Barber</button>
+    </form>
+  </div>
+
+
+  
+  <div div *ngIf="data?.rol === 'admin'; else notUser">
+    <h3>Barber List</h3>
+    <table>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+      </tr>
+      <tr *ngFor="let barber of barberList">
+        <td>{{ barber.name }}</td>
+        <td>{{ barber.email }}</td>
+      </tr>
+    </table>
+  </div>
+
 </div>
+
+
+<!--Estructura de else-->
 <ng-template #loading>
   <p>You need to log in to view your profile</p>
+</ng-template>
+
+<ng-template #notUser>
 </ng-template>

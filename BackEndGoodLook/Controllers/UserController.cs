@@ -3,10 +3,8 @@ using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -42,8 +40,8 @@ public class UserController : ControllerBase
         return _goodLookContext.Users.Select(ToDto);
     }
 
-    [Authorize(Roles = "user")]
-    [HttpGet("userget")]
+    [Authorize(Roles = "user, admin, barber")]
+    [HttpGet("getuser")]
     public ActionResult<UserSignDto> GetUser(int id)
     {
         var user = _goodLookContext.Users.FirstOrDefault(u => u.Id == id);
