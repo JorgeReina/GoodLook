@@ -50,6 +50,27 @@ namespace BackEndGoodLook.Controllers
             return Ok(barberDto);
         }
 
+        [HttpPost("createAdmin")]
+        public async Task<IActionResult> CreateAdmin([FromForm] CreateUserDto userSignDto)
+        {
+            string hashedPassword = passwordHasher.HashPassword(userSignDto.Name, userSignDto.Password);
+
+            User newUser = new User()
+            {
+                Name = userSignDto.Name,
+                Email = userSignDto.Email,
+                Password = hashedPassword,
+                Rol = "admin"
+            };
+
+            await _goodLookContext.Users.AddAsync(newUser);
+            await _goodLookContext.SaveChangesAsync();
+
+            UserSignDto userCreated = ToDto(newUser);
+
+            return Created($"/{newUser.Id}", userCreated);
+        }
+
         [Authorize(Roles = "admin")]
         [HttpPost("createBarber")]
         public async Task<IActionResult> Post([FromForm] CreateUserDto userSignDto)

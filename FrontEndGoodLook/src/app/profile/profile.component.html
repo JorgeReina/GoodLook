@@ -5,7 +5,7 @@
   </div>
 
   <div class="div-elegant">
-    <table>
+    <table class="table">
       <tr>
         <th>Name</th>
         <th>Email</th>
@@ -19,12 +19,14 @@
     </table>
   </div>
 
-  <div>
-    <button class="button" (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
-  </div>
-
-  <div div *ngIf="data?.rol === 'user'; else notUser">
-    <button class="button" (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
+  <div class="div-elegant">
+    <div>
+      <button class="button" (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
+    </div>
+  
+    <div div *ngIf="data?.rol === 'user'; else notUser">
+      <button class="button" (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
+    </div>
   </div>
 
   <div class="registro" div *ngIf="data?.rol === 'admin'; else notUser">
