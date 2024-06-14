@@ -33,7 +33,7 @@ public class UserController : ControllerBase
     }
 
 
-    [Authorize(Roles = "user, barber")]
+    [Authorize(Roles = "user, barber, admin")]
     [HttpGet("userlist")]
     public IEnumerable<UserSignDto> GetUsers()
     {
