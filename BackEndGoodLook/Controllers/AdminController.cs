@@ -24,31 +24,30 @@ namespace BackEndGoodLook.Controllers
 
         [Authorize(Roles = "admin")]
         [HttpGet("barberList")]
-        public IEnumerable<BarberDto> GetUsers()
+        public IEnumerable<BarberDto> GetBarberList()
         {
             return _goodLookContext.Peluquero.Select(BarberToDto);
         }
 
         [Authorize(Roles = "admin")]
         [HttpGet("getBarber")]
-        public ActionResult<UserSignDto> GetUser(int id)
+        public ActionResult<BarberDto> GetBarber(int id)
         {
-            var user = _goodLookContext.Users.FirstOrDefault(u => u.Id == id);
+            var user = _goodLookContext.Peluquero.FirstOrDefault(u => u.PeluqueroId == id);
 
             if (user == null)
             {
                 return NotFound();
             }
 
-            var userSignDto = new UserSignDto
+            var barberDto = new BarberDto
             {
                 // Mapear las propiedades necesarias desde User a UserSignDto
                 Name = user.Name,
                 Email = user.Email,
-                Rol = user.Rol,
             };
 
-            return Ok(userSignDto);
+            return Ok(barberDto);
         }
 
         [Authorize(Roles = "admin")]

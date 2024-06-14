@@ -53,6 +53,14 @@ export class GoodlookService {
     return this.http.get<any>(`${this.API_URL}api/Admin/barberList`, { headers });
   }
 
+  public getBarber(token: any, id: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get<any>(`${this.API_URL}api/Admin/getBarber?id=${id}`, { headers });
+  }
+
   public deleteBarber(token: any, email: any): Observable<any> {
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${token}`
@@ -83,6 +91,14 @@ export class GoodlookService {
     });
 
     return this.http.get(`${this.API_URL}api/Date/getDate?barberEmail=${barberEmail}&date=${date}&hour=${hour}`, { headers });
+  }
+
+  public getDateListBarber(token:any, userId:any) {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get(`${this.API_URL}api/Barber/dateList?Id=${userId}`, { headers });
   }
 
 }

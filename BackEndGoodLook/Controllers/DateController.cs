@@ -25,7 +25,7 @@ namespace BackEndGoodLook.Controllers
         {
             var dates = _goodLookContext.Cita.Where(cita => cita.UserId == Id).ToList();
 
-            var dateDtos = dates.Select(DateToDto);
+            var dateDtos = dates.Select(DatelistToDto);
 
             return dateDtos;
         }
@@ -82,6 +82,17 @@ namespace BackEndGoodLook.Controllers
                 Date = cita.Date,
                 Hour = cita.Hour,
                 UserId = cita.UserId,
+            };
+        }
+
+        private DateDto DatelistToDto(Cita cita)
+        {
+            return new DateDto()
+            {
+                Id = (int)cita.CitaId,
+                Date = cita.Date,
+                Hour = cita.Hour,
+                BarberId = cita.PeluquerosId,
             };
         }
     }

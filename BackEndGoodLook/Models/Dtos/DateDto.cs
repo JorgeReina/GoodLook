@@ -6,4 +6,5 @@ public class DateDto
     public string Date { get; set; }
     public string Hour {  get; set; }
     public int UserId { get; set; }
+    public int BarberId { get; set; }
 }

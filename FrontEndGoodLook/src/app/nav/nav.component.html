@@ -1,7 +1,7 @@
 <div class="menu">
   <nav>
     <a class="group1" routerLink="/home">Home</a>
-    <a class="group1" routerLink="/home">Dates</a>
+    <a class="group1" routerLink="/datelist">Dates</a>
     <a class="group1" routerLink="/profile">Profile</a>
     <ng-container *ngIf="isLogged; else signInLink">
       <a [routerLink]="'/profile'" class="signin">{{ data.name }}</a>

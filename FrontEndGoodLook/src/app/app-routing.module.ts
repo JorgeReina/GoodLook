@@ -6,9 +6,11 @@ import { SignupComponent } from './signup/signup.component';
 import { SigninComponent } from './signin/signin.component';
 import { ProfileComponent } from './profile/profile.component';
 import { Calendar2Component } from './calendar2/calendar2.component';
+import { DatelistComponent } from './datelist/datelist.component';
 
 const routes: Routes = [
   { path: 'home', component: Calendar2Component},
+  { path: 'datelist', component: DatelistComponent},
   { path: 'sign-up', component: SignupComponent},
   { path: 'sign-in', component: SigninComponent},
   { path: 'profile', component: ProfileComponent},

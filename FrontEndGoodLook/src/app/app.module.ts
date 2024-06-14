@@ -14,6 +14,7 @@ import { SigninComponent } from './signin/signin.component';
 import { SignupComponent } from './signup/signup.component';
 import { ProfileComponent } from './profile/profile.component';
 import { Calendar2Component } from './calendar2/calendar2.component';
+import { DatelistComponent } from './datelist/datelist.component';
 
 @NgModule({
   declarations: [
@@ -26,7 +27,8 @@ import { Calendar2Component } from './calendar2/calendar2.component';
     SigninComponent,
     SignupComponent,
     ProfileComponent,
-    Calendar2Component
+    Calendar2Component,
+    DatelistComponent
   ],
   imports: [
     BrowserModule,
