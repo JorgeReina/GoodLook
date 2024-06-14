@@ -1,6 +1,6 @@
-<div *ngIf="data?.rol === 'admin' || data?.rol === 'user'; else notUser">
-  <h2>Date's List</h2>
-  <table>
+<div class="table-container" *ngIf="data?.rol === 'admin' || data?.rol === 'user'; else notUser">
+  <h2 class="header">Date's List</h2>
+  <table class="table">
     <thead>
       <tr>
         <th>Date</th>
