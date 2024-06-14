@@ -171,3 +171,22 @@ input:focus, textarea:focus, select:focus {
     font-size: 14px;
   }
 }
+
+
+.centered-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px; /* Puedes ajustar el valor según tus necesidades */
+  margin: 20px; /* Puedes ajustar el valor según tus necesidades */
+  text-align: center;
+}
+
+.centered-content img {
+  margin-bottom: 10px; /* Espacio entre la imagen y el párrafo */
+}
+
+.centered-content p {
+  margin-top: 10px; /* Espacio entre el párrafo y otros elementos (si los hay) */
+}
