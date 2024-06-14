@@ -1,14 +1,19 @@
 .header{
   background-color: #0f6c3a;
   color: white;
-
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
+  
   padding-left: 8px;
+  position: sticky;
 }
 
 .icono {
   padding-top: 15px;
+}
+
+.titulo {
+  display: flex;
+}
+
+h1 {
+  margin-left: 20px;
 }

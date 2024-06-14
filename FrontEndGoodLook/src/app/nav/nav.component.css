@@ -1,18 +1,38 @@
-.menu {
-  padding: 15PX;
+nav {
+  padding: 15px;
+  display: flex;
 }
 
-
-a{
+.group1{
   padding: 10px;
-  background-color: #13d46b;
-  color: black;
-}
-
-a:hover {
   background-color: #0b8a45;
+  color: black;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-right: 10px;
 }
 
-.menu {
-  
+.group1:hover {
+  background-color: #26ba66;
+}
+
+.signin {
+  margin-left: auto;
+  background-color: #0b8a45;
+  color: #fff;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.signin:hover {
+  background-color: #26ba66;
 }

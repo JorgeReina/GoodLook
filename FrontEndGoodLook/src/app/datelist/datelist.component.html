@@ -1,0 +1,43 @@
+<div class="table-container" *ngIf="data?.rol === 'admin' || data?.rol === 'user'; else notUser">
+  <h2 class="header">Date's List</h2>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Hour</th>
+        <th>Barber</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let date of dateList">
+        <td>{{ date.date }}</td>
+        <td>{{ date.hour }}</td>
+        <td>{{ getBarberName(date.barberId) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div *ngIf="data?.rol === 'barber'; else notUser">
+  <h2>Date's List</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Hour</th>
+        <th>Client</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let date of dateListBarber">
+        <td>{{ date.date }}</td>
+        <td>{{ date.hour }}</td>
+        <td>{{ getUserName(date.userId) }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!--div -->
+<ng-template #notUser>
+</ng-template>

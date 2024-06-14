@@ -1,7 +1,13 @@
 <div class="menu">
   <nav>
-    <a routerLink="/inicio">Inicio</a>
-    <a routerLink="/inicio">Citas</a>
-    <a routerLink="/inicio">Perfil</a>
+    <a class="group1" routerLink="/home">Home</a>
+    <a class="group1" routerLink="/datelist">Dates</a>
+    <a class="group1" routerLink="/profile">Profile</a>
+    <ng-container *ngIf="isLogged; else signInLink">
+      <a [routerLink]="'/profile'" class="signin">{{ data.name }}</a>
+    </ng-container>
+    <ng-template #signInLink>
+      <a [routerLink]="'/sign-in'" class="signin">Sign In</a>
+    </ng-template>
   </nav>
 </div>
