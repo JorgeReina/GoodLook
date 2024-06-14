@@ -5,7 +5,8 @@
         public int CitaId { get; set; }
         public string Date { get; set; }
         public string Hour { get; set; }
-        public User User { get; set; }
-        public ICollection<Peluquero> Peluqueros { get; set; }
+
+        public int UserId { get; set; }
+        public int PeluquerosId { get; set; }
     }
 }

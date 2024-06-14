@@ -5,9 +5,10 @@ import { Page404Component } from './page404/page404.component';
 import { SignupComponent } from './signup/signup.component';
 import { SigninComponent } from './signin/signin.component';
 import { ProfileComponent } from './profile/profile.component';
+import { Calendar2Component } from './calendar2/calendar2.component';
 
 const routes: Routes = [
-  { path: 'home', component: BodyComponent},
+  { path: 'home', component: Calendar2Component},
   { path: 'sign-up', component: SignupComponent},
   { path: 'sign-in', component: SigninComponent},
   { path: 'profile', component: ProfileComponent},

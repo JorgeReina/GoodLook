@@ -16,7 +16,7 @@ namespace BackEndGoodLook.Controllers
         private GoodLookContext _goodLookContext;
         private PasswordHasher<string> passwordHasher = new PasswordHasher<string>();
 
-        public AdminController(GoodLookContext goodLookContext, IOptionsMonitor<JwtBearerOptions> jwtOptions)
+        public AdminController(GoodLookContext goodLookContext)
         {
             //  Base de Datos
             _goodLookContext = goodLookContext;
@@ -82,6 +82,34 @@ namespace BackEndGoodLook.Controllers
             UserSignDto userCreated = ToDto(newUser);
 
             return Created($"/{newUser.Id}", userCreated);
+        }
+
+        [Authorize(Roles = "admin")]
+        [HttpDelete("deleteBarber")]
+        public IActionResult DeleteUser(string barberEmail)
+        {
+            try
+            {
+                // Buscar el usuario en la base de datos
+                var userToDelete = _goodLookContext.Users.FirstOrDefault(user => user.Email.Equals(barberEmail));
+                var barberToDelete = _goodLookContext.Peluquero.FirstOrDefault(user => user.Email.Equals(barberEmail));
+
+                if (userToDelete == null)
+                {
+                    return NotFound($"Usuario con Email {barberEmail} no encontrado");
+                }
+
+                // Eliminar el usuario
+                _goodLookContext.Users.Remove(userToDelete);
+                _goodLookContext.Peluquero.Remove(barberToDelete);
+                _goodLookContext.SaveChanges();
+
+                return Ok(new { Message = "Peluquero eliminado con éxito" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { Error = $"Error al eliminar el usuario: {ex.Message}" });
+            }
         }
 
         private UserSignDto ToDto(User users)

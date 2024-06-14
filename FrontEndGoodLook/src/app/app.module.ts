@@ -13,6 +13,7 @@ import { Page404Component } from './page404/page404.component';
 import { SigninComponent } from './signin/signin.component';
 import { SignupComponent } from './signup/signup.component';
 import { ProfileComponent } from './profile/profile.component';
+import { Calendar2Component } from './calendar2/calendar2.component';
 
 @NgModule({
   declarations: [
@@ -24,13 +25,14 @@ import { ProfileComponent } from './profile/profile.component';
     Page404Component,
     SigninComponent,
     SignupComponent,
-    ProfileComponent
+    ProfileComponent,
+    Calendar2Component
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
-    ReactiveFormsModule,
+    ReactiveFormsModule
   ],
   providers: [],
   bootstrap: [AppComponent]

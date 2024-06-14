@@ -3,11 +3,7 @@
   color: white;
   
   padding-left: 8px;
-  /*position: fixed;
-  left: 0;
-  top: 0;
-  width: 100vw;
-  padding-left: 8px;*/
+  position: sticky;
 }
 
 .icono {

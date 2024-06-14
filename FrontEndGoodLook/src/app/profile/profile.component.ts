@@ -1,10 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { GoodlookService } from '../goodlook.service';
 import { User } from 'src/model/User';
-import { HttpClient } from '@angular/common/http';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Barber } from 'src/model/Barber';
 
 @Component({
   selector: 'app-profile',
@@ -22,7 +19,7 @@ export class ProfileComponent implements OnInit {
   email: string = '';
   password: string='';
 
-  constructor(private goodLook: GoodlookService, private formBuilder: FormBuilder, private httpClient: HttpClient,private router: Router) {
+  constructor(private goodLook: GoodlookService, private formBuilder: FormBuilder) {
     this.myForm = this.formBuilder.group({
       nombre: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
@@ -98,6 +95,19 @@ export class ProfileComponent implements OnInit {
     } else {
       alert('Registro incorrecto, compruebe su contraseña');
     }
+  }
+
+  deleteBarber(email: string) {
+
+    this.goodLook.deleteBarber(this.token, email).subscribe(
+      response => {
+        console.log('Barbero eliminado con éxito', response);
+      },
+      error => {
+        console.error('Error al eliminar el barbero', error);
+      }
+    );
+
   }
 
   reloadPage() {

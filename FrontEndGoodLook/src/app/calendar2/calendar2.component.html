@@ -1,0 +1,20 @@
+<div class="general">
+  
+  <h2>Choice your Date</h2>
+
+  <div class="registro">
+    <form class="plantilla" [formGroup]="myForm" (ngSubmit)="onSubmit()">
+      <label for="date">Date:</label>
+      <input class="registro-input" type="date" formControlName="date" placeholder="Ingrese la fecha"> <br>
+  
+      <label for="hour">Hour:</label>
+      <input class="registro-input" type="text" formControlName="hour" placeholder="Ingrese la hora"> <br>
+  
+      <label for="barberId">Barber ID:</label>
+      <input class="registro-input" type="text" formControlName="barberId" placeholder="Ingrese el ID del peluquero"> <br>
+    
+      <button class="registro-boton" type="submit" [disabled]="myForm.invalid">Create Barber</button>
+    </form>
+  </div>
+  
+</div>

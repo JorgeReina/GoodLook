@@ -42,11 +42,9 @@
       <label for="confirmPassword">Repeat Password:</label>
       <input class="registro-input" type="password" formControlName="confirmPassword" placeholder="Repita su contraseña"> <br>
     
-      <button class="registro-boton" type="submit" [disabled]="myForm.invalid" (click)="reloadPage">Create Barber</button>
+      <button class="registro-boton" type="submit" [disabled]="myForm.invalid" (click)="reloadPage()">Create Barber</button>
     </form>
   </div>
-
-
   
   <div div *ngIf="data?.rol === 'admin'; else notUser">
     <h3>Barber List</h3>
@@ -54,10 +52,12 @@
       <tr>
         <th>Name</th>
         <th>Email</th>
+        <th>Option</th>
       </tr>
       <tr *ngFor="let barber of barberList">
         <td>{{ barber.name }}</td>
         <td>{{ barber.email }}</td>
+        <td><button (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
       </tr>
     </table>
   </div>

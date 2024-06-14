@@ -50,22 +50,31 @@ export class GoodlookService {
       'Authorization': `Bearer ${token}`
     });
 
-    return this.http.get<any>(`${this.API_URL}api/Admin/barberList`, { headers })
+    return this.http.get<any>(`${this.API_URL}api/Admin/barberList`, { headers });
   }
 
-  /*public signUser(user: User): Observable<string> {
+  public deleteBarber(token: any, email: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
 
-    const name = "Jorge";
-    const email = "ejemplo@ejemplo.com"
-    const password = "1234"
+    return this.http.delete(`${this.API_URL}api/Admin/deleteBarber?barberEmail=${email}`, { headers });
+  }
 
-    const user2 = {
-      name: name,
-      email: email,
-      password: password
-    };
+  public getDateList(token:any, userId:any) {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
 
-    return this.http.post<string>(`${this.API_URL}api/User/signup`, user2);
-  }*/
+    return this.http.get(`${this.API_URL}api/Date/dateList?Id=${userId}`, { headers });
+  }
+
+  public createDate(token:any, formData: FormData, barberId: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.post(`${this.API_URL}api/Date/createDate?barberId=${barberId}`,formData, { headers });
+  }
 
 }
