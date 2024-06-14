@@ -69,12 +69,20 @@ export class GoodlookService {
     return this.http.get(`${this.API_URL}api/Date/dateList?Id=${userId}`, { headers });
   }
 
-  public createDate(token:any, formData: FormData, barberId: any): Observable<any> {
+  public createDate(token:any, formData: FormData, barberEmail: any): Observable<any> {
     const headers = new HttpHeaders({
       'Authorization': `Bearer ${token}`
     });
 
-    return this.http.post(`${this.API_URL}api/Date/createDate?barberId=${barberId}`,formData, { headers });
+    return this.http.post(`${this.API_URL}api/Date/createDate?barberEmail=${barberEmail}`,formData, { headers });
+  }
+
+  public getDate(token:any, barberEmail: any, hour: any, date: any): Observable<any> {
+    const headers = new HttpHeaders({
+      'Authorization': `Bearer ${token}`
+    });
+
+    return this.http.get(`${this.API_URL}api/Date/getDate?barberEmail=${barberEmail}&date=${date}&hour=${hour}`, { headers });
   }
 
 }

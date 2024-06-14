@@ -11,8 +11,13 @@ import { User } from 'src/model/User';
 export class Calendar2Component implements OnInit {
 
   data!: User;
-  date: any;
   myForm: FormGroup;
+
+  date: any;
+  hour: any;
+  
+
+  barberList: any[] = [];
 
   token: string | null = localStorage.getItem("JWT") || sessionStorage.getItem('JWT');
   id: string | null = localStorage.getItem("ID") || sessionStorage.getItem('ID');
@@ -20,8 +25,8 @@ export class Calendar2Component implements OnInit {
   constructor(private goodLook: GoodlookService, private formBuilder: FormBuilder) {
     this.myForm = this.formBuilder.group({
       date: ['', Validators.required],
-      hour: ['', Validators.required],
-      barberId: ['', Validators.required],
+      hour: ['12:00', Validators.required],
+      barberEmail: ['', Validators.required],
     });
   }
 
@@ -35,9 +40,21 @@ export class Calendar2Component implements OnInit {
           console.error('Error al obtener los datos:', error);
         }
       );
+      this.getBarberList();
     } else {
       console.error('No se encontró el token');
     }
+  }
+
+  getBarberList() {
+    this.goodLook.getBarberList(this.token,).subscribe(
+      response => {
+        this.barberList = response;
+      },
+      error => {
+        console.error('Error al llamar getBarberList', error);
+      }
+    );
   }
 
   async createDate() {
@@ -46,16 +63,32 @@ export class Calendar2Component implements OnInit {
     formData.append('hour', this.myForm.get('hour')?.value);
     formData.append('userId', this.id || "");
 
-    this.goodLook.createDate(this.token, formData, this.myForm.get('barberId')).subscribe(
-      response => {
-        console.log('Cita creada con éxito', response);
-      },
-      error => {
-        console.error('Error al crear la cita', error);
-      }
-    );
+    let date = this.myForm.get('date')?.value;
+    let hour = this.myForm.get('hour')?.value
+    let barberEmail = this.myForm.get('barberEmail')?.value
 
-    alert('Registro exitoso.');
+    let busyDate: boolean;
+
+    this.goodLook.getDate(this.token, barberEmail, hour, date).subscribe(
+      response => {
+        busyDate = response;
+        console.log(busyDate)
+        
+        if (busyDate) {
+          this.goodLook.createDate(this.token, formData, barberEmail).subscribe(
+            response => {
+              console.log('Cita creada con éxito', response);
+              alert('Successful reserved haircut');
+            },
+            error => {
+              console.error('Error al crear la cita', error);
+            }
+          );
+        } else{
+          alert('This date is reserved')
+        }
+      }
+    ) 
   }
 
   onSubmit() {

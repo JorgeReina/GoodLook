@@ -31,19 +31,36 @@ namespace BackEndGoodLook.Controllers
         }
 
         [Authorize(Roles = "user, admin")]
-        [HttpPost("createDate")]
-        public async Task<IActionResult> Post([FromForm] DateDto createDateDto, int barberId)
+        [HttpGet("getDate")]
+        public ActionResult<Boolean> GetUser(string barberEmail, DateTime date, string hour)
         {
 
-            var user = _goodLookContext.Users.FirstOrDefault(u => u.Id == createDateDto.UserId);
-            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.PeluqueroId == createDateDto.PeluquerosId);
+            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email == barberEmail);
+
+            string formattedDate = date.ToString("yyyy-MM-dd");
+
+            var dateUser = _goodLookContext.Cita.FirstOrDefault(u => u.PeluquerosId == barber.PeluqueroId && u.Date == formattedDate && u.Hour.Equals(hour));
+
+            if (dateUser == null)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        [Authorize(Roles = "user, admin")]
+        [HttpPost("createDate")]
+        public async Task<IActionResult> Post([FromForm] DateDto createDateDto, string barberEmail)
+        {
+            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email == barberEmail);
 
             Cita newDate = new Cita()
             {
                 Date = createDateDto.Date,
                 Hour = createDateDto.Hour,
                 UserId = createDateDto.UserId,
-                PeluquerosId = barberId,
+                PeluquerosId = barber.PeluqueroId,
             };
 
 
