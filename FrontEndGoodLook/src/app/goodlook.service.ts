@@ -10,6 +10,9 @@ export class GoodlookService {
 
   constructor(private http: HttpClient) { }
 
+  //https://appgoodlook.runasp.net/
+  //https://localhost:7234/
+
   API_URL : string = 'https://localhost:7234/';
 
   public getListUser(token: string): Observable<any> {

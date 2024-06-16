@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+Este archivo se usa en el proceso de publicación y empaquetado del proyecto web. Para personalizar el comportamiento de este proceso,
+edite el archivo MSBuild. Visite https://go.microsoft.com/fwlink/?LinkID=208121 para obtener más información. 
+-->
+<Project>
+  <PropertyGroup>
+    <TimeStampOfAssociatedLegacyPublishXmlFile />
+    <EncryptedPassword>AQAAANCMnd8BFdERjHoAwE/Cl+sBAAAAmPo52nPSp0C6HkE5kmcM/QAAAAACAAAAAAAQZgAAAAEAACAAAADfvDZm5ZdhW6FX4V7oag1QKFI/8mEkDHmTAr1FHyDhXgAAAAAOgAAAAAIAACAAAABNg/qqMTOgfJSJDcYAN1rEByuvQpF+uqyLyNtdAkkaHCAAAADeoEP5lyin3i1F3g/B2f3cBUd6LnWw8zRR1/m0WRL3ukAAAAD3ut6YOXldwmWkBdtn6PvydNFwEAUC6VVguKPvQVKib15HOrKcvCC0WcgQqpEJVIxhc4adYGe+/LcKNJiCmBLv</EncryptedPassword>
+    <History>True|2024-06-16T18:37:47.4997928Z;True|2024-06-16T20:36:49.1513782+02:00;False|2024-06-16T20:36:27.8774151+02:00;True|2024-06-16T20:35:44.6229253+02:00;True|2024-06-16T20:32:56.0865652+02:00;True|2024-06-16T20:20:57.4976759+02:00;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
+  <ItemGroup>
+    <DestinationConnectionStrings Include="goodLook">
+      <Value>server=database-goodlook.ch8so2esmwgs.eu-north-1.rds.amazonaws.com%3bport=3306%3bdatabase=goodlook_db%3buser=admin%3bpassword=Macarrones1Lechuga1%3b</Value>
+    </DestinationConnectionStrings>
+  </ItemGroup>
+</Project>

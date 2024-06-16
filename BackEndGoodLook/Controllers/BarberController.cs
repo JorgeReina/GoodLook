@@ -36,7 +36,7 @@ namespace BackEndGoodLook.Controllers
         {
             return new DateDto()
             {
-                Id = (int)cita.CitaId,
+                Id = cita.CitaId,
                 Date = cita.Date,
                 Hour = cita.Hour,
                 UserId = cita.UserId,

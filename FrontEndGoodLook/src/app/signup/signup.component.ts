@@ -12,6 +12,9 @@ import { GoodlookService } from '../goodlook.service';
 })
 export class SignupComponent {
 
+  //https://appgoodlook.runasp.net/
+  //https://localhost:7234/
+
   API_URL : string = 'https://localhost:7234/';
 
   myForm: FormGroup;
