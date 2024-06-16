@@ -22,7 +22,7 @@ namespace BackEndGoodLook.Controllers
             _goodLookContext = goodLookContext;
         }
 
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin, user, barber")]
         [HttpGet("barberList")]
         public IEnumerable<BarberDto> GetBarberList()
         {

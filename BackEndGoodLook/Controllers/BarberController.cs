@@ -22,7 +22,10 @@ namespace BackEndGoodLook.Controllers
         [HttpGet("dateList")]
         public IEnumerable<DateDto> GetDate(int Id)
         {
-            var dates = _goodLookContext.Cita.Where(cita => cita.PeluquerosId == Id).ToList();
+            var user = _goodLookContext.Users.FirstOrDefault(x => x.Id == Id);
+            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email.Equals(user.Email));
+
+            var dates = _goodLookContext.Cita.Where(cita => cita.PeluquerosId == barber.PeluqueroId).ToList();
 
             var dateDtos = dates.Select(DatelistToDto);
 
@@ -33,7 +36,7 @@ namespace BackEndGoodLook.Controllers
         {
             return new DateDto()
             {
-                Id = (int)cita.CitaId,
+                Id = cita.CitaId,
                 Date = cita.Date,
                 Hour = cita.Hour,
                 UserId = cita.UserId,

@@ -11,6 +11,9 @@ import { lastValueFrom } from 'rxjs';
 })
 export class SigninComponent {
 
+  //https://appgoodlook.runasp.net/
+  //https://localhost:7234/
+
   API_URL : string = 'https://localhost:7234/';
 
   myForm: FormGroup;

@@ -33,7 +33,7 @@ public class UserController : ControllerBase
     }
 
 
-    [Authorize(Roles = "user, barber")]
+    [Authorize(Roles = "user, barber, admin")]
     [HttpGet("userlist")]
     public IEnumerable<UserSignDto> GetUsers()
     {
@@ -195,7 +195,7 @@ public class UserController : ControllerBase
     {
         return new UserSignDto()
         {
-            Id = (int)users.Id,
+            Id = users.Id,
             Name = users.Name,
             Email = users.Email,
             Password = users.Password,
