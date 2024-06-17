@@ -2,11 +2,11 @@
 {
     public class Cita
     {
-        public int CitaId { get; set; }
+        public long Id { get; set; }
         public string Date { get; set; }
         public string Hour { get; set; }
 
-        public int UserId { get; set; }
-        public int PeluquerosId { get; set; }
+        public long UserId { get; set; }
+        public long PeluqueroId { get; set; }
     }
 }

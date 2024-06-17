@@ -23,7 +23,7 @@ namespace BackEndGoodLook.Controllers
         [HttpGet("dateList")]
         public IEnumerable<DateDto> GetDate(int Id)
         {
-            var dates = _goodLookContext.Cita.Where(cita => cita.UserId == Id).ToList();
+            var dates = _goodLookContext.Citas.Where(cita => cita.UserId == Id).ToList();
 
             var dateDtos = dates.Select(DatelistToDto);
 
@@ -35,11 +35,11 @@ namespace BackEndGoodLook.Controllers
         public ActionResult<Boolean> GetUser(string barberEmail, DateTime date, string hour)
         {
 
-            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email == barberEmail);
+            var barber = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Email == barberEmail);
 
             string formattedDate = date.ToString("yyyy-MM-dd");
 
-            var dateUser = _goodLookContext.Cita.FirstOrDefault(u => u.PeluquerosId == barber.PeluqueroId && u.Date == formattedDate && u.Hour.Equals(hour));
+            var dateUser = _goodLookContext.Citas.FirstOrDefault(u => u.PeluqueroId == barber.Id && u.Date == formattedDate && u.Hour.Equals(hour));
 
             if (dateUser == null)
             {
@@ -53,32 +53,32 @@ namespace BackEndGoodLook.Controllers
         [HttpPost("createDate")]
         public async Task<IActionResult> Post([FromForm] DateDto createDateDto, string barberEmail)
         {
-            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email == barberEmail);
+            var barber = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Email == barberEmail);
 
             Cita newDate = new Cita()
             {
                 Date = createDateDto.Date,
                 Hour = createDateDto.Hour,
                 UserId = createDateDto.UserId,
-                PeluquerosId = barber.PeluqueroId,
+                PeluqueroId = barber.Id,
             };
 
 
 
 
-            await _goodLookContext.Cita.AddAsync(newDate);
+            await _goodLookContext.Citas.AddAsync(newDate);
             await _goodLookContext.SaveChangesAsync();
 
             DateDto dateCreated = DateToDto(newDate);
 
-            return Created($"/{newDate.CitaId}", dateCreated);
+            return Created($"/{newDate.Id}", dateCreated);
         }
 
         private DateDto DateToDto(Cita cita)
         {
             return new DateDto()
             {
-                Id = cita.CitaId,
+                Id = cita.Id,
                 Date = cita.Date,
                 Hour = cita.Hour,
                 UserId = cita.UserId,
@@ -89,10 +89,10 @@ namespace BackEndGoodLook.Controllers
         {
             return new DateDto()
             {
-                Id = cita.CitaId,
+                Id = cita.Id,
                 Date = cita.Date,
                 Hour = cita.Hour,
-                BarberId = cita.PeluquerosId,
+                BarberId = cita.PeluqueroId,
             };
         }
     }

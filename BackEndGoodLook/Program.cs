@@ -4,13 +4,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.Filters;
+using Pomelo.EntityFrameworkCore.MySql;
 using System.Text;
 
 namespace BackEndGoodLook
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +26,7 @@ namespace BackEndGoodLook
                 {
                     BearerFormat = "JWT",
                     Name = "Authorization",
-                    Description = "bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImM2YThlZDIwLTY5MjYtNGQ3OS04OWZjLWUzZmMyNjYyZDlhMCIsInJvbGUiOiJhZG1pbiIsIm5iZiI6MTcxODMwMzA4NCwiZXhwIjoxNzE4NzM1MDg0LCJpYXQiOjE3MTgzMDMwODR9.lLEwndbDiHTNfNqwG7NjAfzU0O1XIx6JlrEZbrVjRMI",
+                    Description = "",
                     In = Microsoft.OpenApi.Models.ParameterLocation.Header,
                     Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
                     Scheme = JwtBearerDefaults.AuthenticationScheme
@@ -33,9 +34,13 @@ namespace BackEndGoodLook
                 options.OperationFilter<SecurityRequirementsOperationFilter>(true, JwtBearerDefaults.AuthenticationScheme);
             });
 
+            string connection = builder.Configuration.GetConnectionString("goodLook");
+
             builder.Services.AddDbContext<GoodLookContext>(options 
-                => options.UseMySQL(builder.Configuration.GetConnectionString("goodLook"))
+                => options.UseMySql(connection, ServerVersion.AutoDetect(connection))
             );
+
+            builder.Services.AddTransient<DbSeeder>();
 
             builder.Services.AddAuthentication().AddJwtBearer(options =>
             {
@@ -54,6 +59,17 @@ namespace BackEndGoodLook
                 };
             });
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(builder =>
+                {
+                    builder.SetIsOriginAllowed(origin => true)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+                });
+            });
+
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -61,7 +77,9 @@ namespace BackEndGoodLook
             using (var scope = app.Services.CreateScope())
             {
                 GoodLookContext context = scope.ServiceProvider.GetRequiredService<GoodLookContext>();
-                context.Database.EnsureCreated();
+                //context.Database.EnsureCreated();
+                DbSeeder dbSeeder = scope.ServiceProvider.GetService<DbSeeder>();
+                await dbSeeder.SeedAsync();
             }
 
             if (app.Environment.IsDevelopment())
@@ -77,6 +95,8 @@ namespace BackEndGoodLook
                     .AllowCredentials());
 
             }
+
+            app.UseCors();
 
             app.UseHttpsRedirection();
 
