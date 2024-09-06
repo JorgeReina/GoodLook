@@ -12,7 +12,7 @@ public class GoodLookContext : DbContext
     }
 
     public DbSet<User> Users { get; set; }
-    public DbSet<Cita> Cita { get; set; }
-    public DbSet<Peluquero> Peluquero { get; set; }
+    public DbSet<Cita> Citas { get; set; }
+    public DbSet<Peluquero> Peluqueros { get; set; }
 
 }

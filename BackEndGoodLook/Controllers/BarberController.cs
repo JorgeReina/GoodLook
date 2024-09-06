@@ -23,9 +23,9 @@ namespace BackEndGoodLook.Controllers
         public IEnumerable<DateDto> GetDate(int Id)
         {
             var user = _goodLookContext.Users.FirstOrDefault(x => x.Id == Id);
-            var barber = _goodLookContext.Peluquero.FirstOrDefault(u => u.Email.Equals(user.Email));
+            var barber = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Email.Equals(user.Email));
 
-            var dates = _goodLookContext.Cita.Where(cita => cita.PeluquerosId == barber.PeluqueroId).ToList();
+            var dates = _goodLookContext.Citas.Where(cita => cita.PeluqueroId == barber.Id).ToList();
 
             var dateDtos = dates.Select(DatelistToDto);
 
@@ -36,11 +36,11 @@ namespace BackEndGoodLook.Controllers
         {
             return new DateDto()
             {
-                Id = cita.CitaId,
+                Id = cita.Id,
                 Date = cita.Date,
                 Hour = cita.Hour,
                 UserId = cita.UserId,
-                BarberId = cita.PeluquerosId,
+                BarberId = cita.PeluqueroId,
             };
         }
     }

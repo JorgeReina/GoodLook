@@ -26,14 +26,14 @@ namespace BackEndGoodLook.Controllers
         [HttpGet("barberList")]
         public IEnumerable<BarberDto> GetBarberList()
         {
-            return _goodLookContext.Peluquero.Select(BarberToDto);
+            return _goodLookContext.Peluqueros.Select(BarberToDto);
         }
 
         [Authorize(Roles = "admin")]
         [HttpGet("getBarber")]
         public ActionResult<BarberDto> GetBarber(int id)
         {
-            var user = _goodLookContext.Peluquero.FirstOrDefault(u => u.PeluqueroId == id);
+            var user = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Id == id);
 
             if (user == null)
             {
@@ -50,6 +50,7 @@ namespace BackEndGoodLook.Controllers
             return Ok(barberDto);
         }
 
+        [Authorize(Roles = "admin")]
         [HttpPost("createAdmin")]
         public async Task<IActionResult> CreateAdmin([FromForm] CreateUserDto userSignDto)
         {
@@ -96,7 +97,7 @@ namespace BackEndGoodLook.Controllers
             await _goodLookContext.Users.AddAsync(newUser);
             await _goodLookContext.SaveChangesAsync();
 
-            await _goodLookContext.Peluquero.AddAsync(newPeluquero);
+            await _goodLookContext.Peluqueros.AddAsync(newPeluquero);
             await _goodLookContext.SaveChangesAsync();
 
             UserSignDto userCreated = ToDto(newUser);
@@ -112,7 +113,7 @@ namespace BackEndGoodLook.Controllers
             {
                 // Buscar el usuario en la base de datos
                 var userToDelete = _goodLookContext.Users.FirstOrDefault(user => user.Email.Equals(barberEmail));
-                var barberToDelete = _goodLookContext.Peluquero.FirstOrDefault(user => user.Email.Equals(barberEmail));
+                var barberToDelete = _goodLookContext.Peluqueros.FirstOrDefault(user => user.Email.Equals(barberEmail));
 
                 if (userToDelete == null)
                 {
@@ -121,7 +122,7 @@ namespace BackEndGoodLook.Controllers
 
                 // Eliminar el usuario
                 _goodLookContext.Users.Remove(userToDelete);
-                _goodLookContext.Peluquero.Remove(barberToDelete);
+                _goodLookContext.Peluqueros.Remove(barberToDelete);
                 _goodLookContext.SaveChanges();
 
                 return Ok(new { Message = "Peluquero eliminado con éxito" });
@@ -148,7 +149,7 @@ namespace BackEndGoodLook.Controllers
         {
             return new BarberDto()
             {
-                Id = (int)peluquero.PeluqueroId,
+                Id = (int)peluquero.Id,
                 Name = peluquero.Name,
                 Email = peluquero.Email,
             };

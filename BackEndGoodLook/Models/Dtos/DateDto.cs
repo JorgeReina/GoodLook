@@ -2,9 +2,9 @@
 
 public class DateDto
 {
-    public int Id { get; set; }
+    public long Id { get; set; }
     public string Date { get; set; }
     public string Hour {  get; set; }
-    public int UserId { get; set; }
-    public int BarberId { get; set; }
+    public long UserId { get; set; }
+    public long BarberId { get; set; }
 }
