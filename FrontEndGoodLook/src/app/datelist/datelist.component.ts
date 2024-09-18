@@ -104,7 +104,7 @@ export class DatelistComponent implements OnInit {
 
   getBarberName(barberId: string): string {
     const barber = this.barberDict[barberId];
-    return barber ? barber.email : 'Unknown';
+    return barber ? barber.name : 'Unknown';
   }
 
   getUserName(userId: string): string {

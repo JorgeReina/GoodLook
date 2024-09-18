@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj": {}
+    "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj": {}
   },
   "projects": {
-    "C:\\Users\\reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj": {
+    "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj",
+        "projectUniqueName": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj",
         "projectName": "BackEndGoodLook",
-        "projectPath": "C:\\Users\\reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj",
-        "packagesPath": "C:\\Users\\reina\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\reina\\Desktop\\GoodLook\\BackEndGoodLook\\obj\\",
+        "projectPath": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\BackEndGoodLook.csproj",
+        "packagesPath": "C:\\Users\\Jorge Reina\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\reina\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Jorge Reina\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -39,6 +39,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -97,7 +102,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.100/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.302/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

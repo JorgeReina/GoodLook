@@ -35,6 +35,10 @@ body {
   background-color: #087437;
 }
 
+.button:disabled {
+  background-color: #979797;
+}
+
 .container {
   max-width: 1200px;
   margin: 20px auto;
@@ -124,6 +128,10 @@ input:focus, textarea:focus, select:focus {
 
 .table tr:hover {
   background-color: #e2f7e1;
+}
+
+.prueba {
+  padding-right: 2%;
 }
 
 @media (max-width: 768px) {
