@@ -3,4 +3,9 @@
 https://go.microsoft.com/fwlink/?LinkID=208121.
 -->
 <Project>
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\Users\Jorge\Desktop\GoodLook - Documentación</_PublishTargetUrl>
+    <History>False|2024-09-24T16:57:10.8347146Z||;</History>
+    <LastFailureDetails />
+  </PropertyGroup>
 </Project>
