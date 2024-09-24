@@ -1,11 +1,9 @@
 ﻿using BackEndGoodLook.Models.Database;
 using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace BackEndGoodLook.Controllers
 {
@@ -22,7 +20,7 @@ namespace BackEndGoodLook.Controllers
             _goodLookContext = goodLookContext;
         }
 
-        [Authorize(Roles = "admin, user, barber")]
+        [Authorize(Roles = "admin, user, barber, invitado")]
         [HttpGet("barberList")]
         public IEnumerable<BarberDto> GetBarberList()
         {

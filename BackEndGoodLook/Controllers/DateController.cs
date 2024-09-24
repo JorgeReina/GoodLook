@@ -2,7 +2,6 @@
 using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BackEndGoodLook.Controllers

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.Filters;
-using Pomelo.EntityFrameworkCore.MySql;
 using System.Text;
 
 namespace BackEndGoodLook

@@ -35,6 +35,14 @@ public class DbSeeder
             Rol = "admin"
         };
 
-        await _goodLookContext.Users.AddRangeAsync(newUser);
+        User newUser2 = new User()
+        {
+            Name = "invitado",
+            Email = "invitado@prueba.com",
+            Password = "AQAAAAIAAYagAAAAEIQYx/v/GWd803sLjzCQr04OTpo9fXGoayk2atNaO3L+XiAkgbnbvlep4vt+EIncCg==",
+            Rol = "invitado",
+        };
+
+        await _goodLookContext.Users.AddRangeAsync(newUser, newUser2);
     }
 }

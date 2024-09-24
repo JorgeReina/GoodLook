@@ -3,12 +3,28 @@
   "WorkspaceRootPath": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\guestcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\guestcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\datecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\datecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\models\\database\\dbseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:models\\database\\dbseeder.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
@@ -22,40 +38,80 @@
       "DocumentGroups": [
         {
           "DockedWidth": 215,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 5,
           "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "GuestController.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\GuestController.cs",
+              "RelativeDocumentMoniker": "Controllers\\GuestController.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\GuestController.cs",
+              "RelativeToolTip": "Controllers\\GuestController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA8AAAAEAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-24T16:49:59.918Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "UserController.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\UserController.cs",
+              "RelativeDocumentMoniker": "Controllers\\UserController.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\UserController.cs",
+              "RelativeToolTip": "Controllers\\UserController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-24T16:49:16.951Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "DbSeeder.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Models\\Database\\DbSeeder.cs",
+              "RelativeDocumentMoniker": "Models\\Database\\DbSeeder.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Models\\Database\\DbSeeder.cs",
+              "RelativeToolTip": "Models\\Database\\DbSeeder.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAACcAAAAeAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-24T15:32:47.002Z",
+              "EditorCaption": ""
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "DateController.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\DateController.cs",
               "RelativeDocumentMoniker": "Controllers\\DateController.cs",
               "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\DateController.cs",
               "RelativeToolTip": "Controllers\\DateController.cs",
-              "ViewState": "AQIAAC8AAAAAAAAAAAAwwDgAAABCAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAMAAAApAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-09-06T17:30:30.943Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAAC4AAAAcAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAUAAAAlAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-22T11:41:22.941Z"
+              "WhenOpened": "2024-07-22T11:41:22.941Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 6,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",
@@ -64,6 +120,25 @@
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAwAAABgAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2024-07-22T11:41:22.935Z"
+            }
+          ]
+        },
+        {
+          "DockedWidth": 215,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AdminController.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\AdminController.cs",
+              "RelativeDocumentMoniker": "Controllers\\AdminController.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\AdminController.cs",
+              "RelativeToolTip": "Controllers\\AdminController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAIAAAAiAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-09-24T16:50:19.308Z",
+              "EditorCaption": ""
             }
           ]
         }
