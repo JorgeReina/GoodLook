@@ -43,8 +43,8 @@ namespace BackEndGoodLook
 
             builder.Services.AddAuthentication().AddJwtBearer(options =>
             {
-                string Key2 = Environment.GetEnvironmentVariable("JWT_KEY");
-                string Key = builder.Configuration[Key2];
+                //string Key = Environment.GetEnvironmentVariable("JWT_KEY");
+                string Key = builder.Configuration["JWT_KEY"];
                 options.TokenValidationParameters = new TokenValidationParameters()
                 {
                     //  Validar el emisor del token.
