@@ -14,6 +14,9 @@ export class DatelistComponent implements OnInit {
 
   data!: User;
 
+  loader: boolean = true;
+  img: boolean = false;
+
   dateList: any;
   dateListBarber: any;
   barberList: any[] = [];
@@ -39,6 +42,10 @@ export class DatelistComponent implements OnInit {
       this.getUserList();
     } else {
       console.error('No se encontró el token');
+      setTimeout(() => {
+        this.loader = false;
+        this.img = true;
+      }, 1000)
     }
   }
 

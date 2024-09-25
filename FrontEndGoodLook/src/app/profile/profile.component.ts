@@ -15,6 +15,9 @@ export class ProfileComponent implements OnInit {
   token: string | null= localStorage.getItem("JWT") || sessionStorage.getItem('JWT');
   id: string | null = localStorage.getItem("ID") || sessionStorage.getItem('ID');
 
+  loader: boolean = true;
+  img: boolean = false;
+
   myForm: FormGroup;
   email: string = '';
   password: string='';
@@ -41,6 +44,10 @@ export class ProfileComponent implements OnInit {
       this.getBarberList();
     } else {
       console.error('No se encontró el token');
+      setTimeout(() => {
+        this.loader = false;
+        this.img = true;
+      }, 500)
     }
   }
 

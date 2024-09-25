@@ -24,12 +24,12 @@
       <button class="button" (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
     </div>
   
-    <div div *ngIf="data?.rol === 'user'; else notUser">
+    <div *ngIf="data?.rol === 'user'; else notUser">
       <button class="button" (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
     </div>
   </div>
 
-  <div class="registro" div *ngIf="data?.rol === 'admin'; else notUser">
+  <div class="registro" *ngIf="data?.rol === 'admin' || data?.rol === 'invitado'; else notUser">
     <form [formGroup]="myForm" (ngSubmit)="createBarber()">
       <h2>Create New Barber</h2>
       <label for="nombre">Name:</label>
@@ -48,7 +48,7 @@
     </form>
   </div>
   
-  <div class="table-container" *ngIf="data?.rol === 'admin'; else notUser">
+  <div class="table-container" *ngIf="data?.rol === 'admin' || data?.rol === 'invitado'; else notUser">
     <h3>Barber List</h3>
     <table class="table">
       <tr>
@@ -69,9 +69,12 @@
 
 <!--Estructura de else-->
 <ng-template #loading>
-  <div class="centered-content">
-    <img src="../../assets/images/3.jpg" alt="50%" width="50%">
-    <p>You need to log-in to view your profile</p>
+  <div class="container-loader">
+    <div class="loader centered-div" *ngIf="loader"></div>
+    <div class="centered-content" *ngIf="img">
+      <img src="../../assets/images/3.jpg" alt="50%" width="50%">
+      <p>You need to log-in to view your profile</p>
+    </div>
   </div>
 </ng-template>
 

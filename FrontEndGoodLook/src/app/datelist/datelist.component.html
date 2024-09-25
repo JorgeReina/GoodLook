@@ -45,8 +45,11 @@
 </ng-template>
 
 <ng-template #loading>
-  <div class="centered-content">
-    <img src="../../assets/images/3.jpg" alt="50%" width="50%">
-    <p>You need to log-in to view your date's</p>
+  <div class="container-loader">
+    <div class="loader centered-div" *ngIf="loader"></div>
+    <div class="centered-content" *ngIf="img">
+      <img src="../../assets/images/3.jpg" alt="50%" width="50%">
+      <p>You need to log-in to view your profile</p>
+    </div>
   </div>
 </ng-template>
