@@ -39,7 +39,7 @@ public class DbSeeder
         {
             Name = "invitado",
             Email = "invitado@prueba.com",
-            Password = "AQAAAAIAAYagAAAAEIQYx/v/GWd803sLjzCQr04OTpo9fXGoayk2atNaO3L+XiAkgbnbvlep4vt+EIncCg==",
+            Password = "AQAAAAIAAYagAAAAEDr6IpgitN1aSgKNzbjaC6CEb3AOEoSJFpdgjPQlt5Q08g2ocKTvR9xvUtkXZgwH8Q==",
             Rol = "invitado",
         };
 

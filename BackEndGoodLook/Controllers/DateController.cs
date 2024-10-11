@@ -18,7 +18,7 @@ namespace BackEndGoodLook.Controllers
             _goodLookContext = goodLookContext;
         }
 
-        [Authorize(Roles = "user, admin")]
+        [Authorize(Roles = "user, admin, invitado")]
         [HttpGet("dateList")]
         public IEnumerable<DateDto> GetDate(int Id)
         {
@@ -48,7 +48,7 @@ namespace BackEndGoodLook.Controllers
             return false;
         }
 
-        [Authorize(Roles = "user, admin")]
+        [Authorize(Roles = "user, admin, invitado")]
         [HttpPost("createDate")]
         public async Task<IActionResult> Post([FromForm] DateDto createDateDto, string barberEmail)
         {

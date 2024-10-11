@@ -1,5 +1,5 @@
-<div *ngIf="data; else loading">
-  <div class="table-container" *ngIf="data?.rol === 'admin' || data?.rol === 'user'; else notUser">
+<div *ngIf="data; else loading" class="container">
+  <div class="div-elegant" *ngIf="data?.rol === 'admin' || data?.rol === 'user' || data?.rol === 'invitado'; else notUser">
     <h2 class="header">Date's List</h2>
     <table class="table">
       <thead>

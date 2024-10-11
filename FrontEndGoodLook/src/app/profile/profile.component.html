@@ -59,7 +59,8 @@
       <tr *ngFor="let barber of barberList">
         <td>{{ barber.name }}</td>
         <td>{{ barber.email }}</td>
-        <td><button class="button" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
+        <td *ngIf="data?.rol === 'admin'"><button class="button" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
+        <td *ngIf="data?.rol === 'invitado'"><button class="button" type="submit" [disabled]="myForm.invalid" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
       </tr>
     </table>
   </div>

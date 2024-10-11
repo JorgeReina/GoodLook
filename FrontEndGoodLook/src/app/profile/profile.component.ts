@@ -44,10 +44,12 @@ export class ProfileComponent implements OnInit {
       this.getBarberList();
     } else {
       console.error('No se encontró el token');
+      /* 
       setTimeout(() => {
         this.loader = false;
         this.img = true;
       }, 500)
+      */
     }
   }
 

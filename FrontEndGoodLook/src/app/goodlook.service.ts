@@ -13,7 +13,7 @@ export class GoodlookService {
   //https://appgoodlook.runasp.net/
   //https://localhost:7234/
 
-  API_URL : string = 'https://appgoodlook.runasp.net/';
+  API_URL : string = 'https://localhost:7234/';
 
   public getListUser(token: string): Observable<any> {
     const headers = new HttpHeaders({

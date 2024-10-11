@@ -3,8 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\datecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\datecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:controllers\\admincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\models\\dtos\\datedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|solutionrelative:models\\dtos\\datedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{C0A6F8B6-ED55-4C53-9243-0339FD599906}|BackEndGoodLook.csproj|c:\\users\\jorge reina\\desktop\\goodlook\\backendgoodlook\\controllers\\usercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -43,6 +51,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "DateController.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\DateController.cs",
+              "RelativeDocumentMoniker": "Controllers\\DateController.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\DateController.cs",
+              "RelativeToolTip": "Controllers\\DateController.cs",
+              "ViewState": "AQIAABAAAAAAAAAAAAAgwBkAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-11T11:56:16.615Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "DateDto.cs",
+              "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Models\\Dtos\\DateDto.cs",
+              "RelativeDocumentMoniker": "Models\\Dtos\\DateDto.cs",
+              "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Models\\Dtos\\DateDto.cs",
+              "RelativeToolTip": "Models\\Dtos\\DateDto.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-10-11T11:56:13.129Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "AdminController.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\AdminController.cs",
               "RelativeDocumentMoniker": "Controllers\\AdminController.cs",
@@ -55,20 +89,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "UserController.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\UserController.cs",
               "RelativeDocumentMoniker": "Controllers\\UserController.cs",
               "ToolTip": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Controllers\\UserController.cs",
               "RelativeToolTip": "Controllers\\UserController.cs",
-              "ViewState": "AQIAABEAAAAAAAAAAAAQwAAAAAAAAAAA",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAACoAAAA1AAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-09-25T12:07:14.703Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "DbSeeder.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Models\\Database\\DbSeeder.cs",
               "RelativeDocumentMoniker": "Models\\Database\\DbSeeder.cs",
@@ -81,7 +115,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "Properties\\launchSettings.json",
@@ -89,12 +123,11 @@
               "RelativeToolTip": "Properties\\launchSettings.json",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAABIAAAAQAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2024-09-24T17:15:27.157Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-09-24T17:15:27.157Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\appsettings.json",
               "RelativeDocumentMoniker": "appsettings.json",
@@ -102,12 +135,11 @@
               "RelativeToolTip": "appsettings.json",
               "ViewState": "AQIAAAAAAAAAAAAAAAAAAAoAAAADAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2024-07-22T11:41:22.935Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-07-22T11:41:22.935Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\Jorge Reina\\Desktop\\GoodLook\\BackEndGoodLook\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
@@ -115,8 +147,7 @@
               "RelativeToolTip": "Program.cs",
               "ViewState": "AQIAABYAAAAAAAAAAAAgwC0AAAAcAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2024-07-22T11:41:22.941Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-07-22T11:41:22.941Z"
             }
           ]
         }

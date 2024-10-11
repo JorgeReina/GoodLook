@@ -40,7 +40,7 @@ public class UserController : ControllerBase
         return _goodLookContext.Users.Select(ToDto);
     }
 
-    [Authorize(Roles = "user, admin, barber")]
+    [Authorize(Roles = "user, admin, barber, invitado")]
     [HttpGet("getuser")]
     public ActionResult<UserSignDto> GetUser(int id)
     {
