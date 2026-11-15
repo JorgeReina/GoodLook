@@ -28,3 +28,7 @@ Se definen agentes de proyecto en `.codex/agents/` para Project Manager, develop
 ## Verificación de referencia
 
 El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz soportada de Angular 16. La ejecución de Karma no pudo arrancar Chromium por restricciones de sockets; .NET no está instalado. Detalles y matriz estática de rutas en [BASELINE.md](BASELINE.md).
+
+## Primera base de API
+
+`backend-node` incorpora Express 5 y TypeScript estricto, endpoint de salud, 404 JSON y gestión inicial de errores. El 15-11-2026 se ejecutaron tres pruebas HTTP (salud, ruta inexistente y JSON inválido), typecheck y compilación con resultado satisfactorio. Es únicamente un esqueleto: no incluye autenticación, persistencia, autorización ni citas, y no debe desplegarse como sustituto del sistema actual. GL-009 sigue en curso: faltan CI, observabilidad, validación adicional y revisión de seguridad.
