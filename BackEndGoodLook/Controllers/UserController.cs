@@ -1,4 +1,5 @@
-﻿using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Identity;
 using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -44,6 +45,8 @@ public class UserController : ControllerBase
     [HttpGet("getuser")]
     public ActionResult<UserSignDto> GetUser(int id)
     {
+        if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+        if (currentId != id && !User.IsInRole("admin")) return Forbid();
         var user = _goodLookContext.Users.FirstOrDefault(u => u.Id == id);
 
         if (user == null)
@@ -106,7 +109,7 @@ public class UserController : ControllerBase
                         //  Datos para autorizar al usario
                         Claims = new Dictionary<string, object>
                     {
-                        {"id", Guid.NewGuid().ToString() },
+                        {JwtRegisteredClaimNames.Sub, userList.Id.ToString() },
                         { ClaimTypes.Role, userList.Rol }
                     },
                         //  Caducidad del Token
@@ -135,10 +138,13 @@ public class UserController : ControllerBase
 
     [Authorize(Roles = "user")]
     [HttpPost("updateUser")]
-    public async Task<bool> Update([FromForm] string name, [FromForm] string email, [FromForm] string password, [FromForm] int userId)
+    public async Task<IActionResult> Update([FromForm] string name, [FromForm] string email, [FromForm] string password, [FromForm] int userId)
     {
 
+        if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+        if (currentId != userId) return Forbid();
         var user = _goodLookContext.Users.FirstOrDefault(p => p.Id == userId);
+        if (user == null) return NotFound();
 
 
         if (!user.Name.Equals(name) && name != null)
@@ -160,7 +166,7 @@ public class UserController : ControllerBase
         _goodLookContext.Users.Update(user);
         await _goodLookContext.SaveChangesAsync();
 
-        return true;
+        return Ok(true);
 
     }
 
@@ -168,6 +174,8 @@ public class UserController : ControllerBase
     [HttpDelete("deleteUser")]
     public IActionResult DeleteUser(int userId)
     {
+        if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+        if (currentId != userId) return Forbid();
         try
         {
             // Buscar el usuario en la base de datos

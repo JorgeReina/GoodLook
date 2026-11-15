@@ -21,3 +21,4 @@ foreach (var controllerType in new[] { typeof(UserController), typeof(AdminContr
     if (parsed.Id != 41 || parsed.Email != "test@example.invalid") throw new Exception("Safe fields not preserved");
     Console.WriteLine($"PASS {controllerType.Name} does not expose password");
 }
+await AccessTests.Run();

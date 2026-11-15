@@ -1,83 +1,90 @@
-<div *ngIf="data; else loading" class="container">
-
-  <div>
-    <img src="" alt="">
-  </div>
-
-  <div class="div-elegant">
-    <table class="table">
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Rol</th>
-      </tr>
-      <tr>
-        <td>{{data.name}}</td>
-        <td>{{data.email}}</td>
-        <td>{{data.rol}}</td>
-      </tr>
-    </table>
-  </div>
-
-  <div class="div-elegant">
+@if (data) {
+  <div class="container">
     <div>
-      <button class="button" (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
+      <img src="" alt="">
     </div>
-  
-    <div *ngIf="data?.rol === 'user'; else notUser">
-      <button class="button" (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
+    <div class="div-elegant">
+      <table class="table">
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Rol</th>
+        </tr>
+        <tr>
+          <td>{{data.name}}</td>
+          <td>{{data.email}}</td>
+          <td>{{data.rol}}</td>
+        </tr>
+      </table>
     </div>
+    <div class="div-elegant">
+      <div>
+        <button class="button" (click)="closeSession(); reloadPage()" routerLink="/home">Close Profile</button>
+      </div>
+      @if (data?.rol === 'user') {
+        <div>
+          <button class="button" (click)="deleteUser(); closeSession(); reloadPage()" routerLink="/home">Delete Profile</button>
+        </div>
+      } @else {
+      }
+    </div>
+    @if (data?.rol === 'admin' || data?.rol === 'invitado') {
+      <div class="registro">
+        <form [formGroup]="myForm" (ngSubmit)="createBarber()">
+          <h2>Create New Barber</h2>
+          <label for="nombre">Name:</label>
+          <input type="text" formControlName="nombre" placeholder="Ingrese su nombre"> <br>
+          <label for="email">Email:</label>
+          <input type="email" formControlName="email" placeholder="Ingrese su correo electrónico"> <br>
+          <label for="password">Password:</label>
+          <input type="password" formControlName="password" placeholder="Ingrese su contraseña"> <br>
+          <label for="confirmPassword">Repeat Password:</label>
+          <input type="password" formControlName="confirmPassword" placeholder="Repita su contraseña"> <br>
+          <button class="button" type="submit" [disabled]="myForm.invalid" (click)="reloadPage()">Create Barber</button>
+        </form>
+      </div>
+    } @else {
+    }
+    @if (data?.rol === 'admin' || data?.rol === 'invitado') {
+      <div class="table-container">
+        <h3>Barber List</h3>
+        <table class="table">
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Option</th>
+          </tr>
+          @for (barber of barberList; track barber) {
+            <tr>
+              <td>{{ barber.name }}</td>
+              <td>{{ barber.email }}</td>
+              @if (data?.rol === 'admin') {
+                <td><button class="button" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
+              }
+              @if (data?.rol === 'invitado') {
+                <td><button class="button" type="submit" [disabled]="myForm.invalid" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
+              }
+            </tr>
+          }
+        </table>
+      </div>
+    } @else {
+    }
   </div>
-
-  <div class="registro" *ngIf="data?.rol === 'admin' || data?.rol === 'invitado'; else notUser">
-    <form [formGroup]="myForm" (ngSubmit)="createBarber()">
-      <h2>Create New Barber</h2>
-      <label for="nombre">Name:</label>
-      <input type="text" formControlName="nombre" placeholder="Ingrese su nombre"> <br>
-  
-      <label for="email">Email:</label>
-      <input type="email" formControlName="email" placeholder="Ingrese su correo electrónico"> <br>
-  
-      <label for="password">Password:</label>
-      <input type="password" formControlName="password" placeholder="Ingrese su contraseña"> <br>
-  
-      <label for="confirmPassword">Repeat Password:</label>
-      <input type="password" formControlName="confirmPassword" placeholder="Repita su contraseña"> <br>
-    
-      <button class="button" type="submit" [disabled]="myForm.invalid" (click)="reloadPage()">Create Barber</button>
-    </form>
+} @else {
+  <div class="container-loader">
+    @if (loader) {
+      <div class="loader centered-div"></div>
+    }
+    @if (img) {
+      <div class="centered-content">
+        <img src="../../assets/images/3.jpg" alt="50%" width="50%">
+        <p>You need to log-in to view your profile</p>
+      </div>
+    }
   </div>
-  
-  <div class="table-container" *ngIf="data?.rol === 'admin' || data?.rol === 'invitado'; else notUser">
-    <h3>Barber List</h3>
-    <table class="table">
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Option</th>
-      </tr>
-      <tr *ngFor="let barber of barberList">
-        <td>{{ barber.name }}</td>
-        <td>{{ barber.email }}</td>
-        <td *ngIf="data?.rol === 'admin'"><button class="button" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
-        <td *ngIf="data?.rol === 'invitado'"><button class="button" type="submit" [disabled]="myForm.invalid" (click)="deleteBarber(barber.email); reloadPage()">Delete</button></td>
-      </tr>
-    </table>
-  </div>
-
-</div>
+}
 
 
 <!--Estructura de else-->
-<ng-template #loading>
-  <div class="container-loader">
-    <div class="loader centered-div" *ngIf="loader"></div>
-    <div class="centered-content" *ngIf="img">
-      <img src="../../assets/images/3.jpg" alt="50%" width="50%">
-      <p>You need to log-in to view your profile</p>
-    </div>
-  </div>
-</ng-template>
 
-<ng-template #notUser>
-</ng-template>

@@ -3,9 +3,10 @@ import { GoodlookService } from '../goodlook.service';
 import { User } from 'src/model/User';
 
 @Component({
-  selector: 'app-datelist',
-  templateUrl: './datelist.component.html',
-  styleUrls: ['./datelist.component.css']
+    selector: 'app-datelist',
+    templateUrl: './datelist.component.html',
+    styleUrls: ['./datelist.component.css'],
+    standalone: false
 })
 export class DatelistComponent implements OnInit {
 

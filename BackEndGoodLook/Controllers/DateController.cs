@@ -1,4 +1,5 @@
-﻿using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Identity;
 using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -20,13 +21,15 @@ namespace BackEndGoodLook.Controllers
 
         [Authorize(Roles = "user, admin, invitado")]
         [HttpGet("dateList")]
-        public IEnumerable<DateDto> GetDate(int Id)
+        public IActionResult GetDate(int Id)
         {
+            if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+            if (currentId != Id && !User.IsInRole("admin")) return Forbid();
             var dates = _goodLookContext.Citas.Where(cita => cita.UserId == Id).ToList();
 
             var dateDtos = dates.Select(DatelistToDto);
 
-            return dateDtos;
+            return Ok(dateDtos);
         }
 
         [Authorize(Roles = "user, admin")]
@@ -52,13 +55,16 @@ namespace BackEndGoodLook.Controllers
         [HttpPost("createDate")]
         public async Task<IActionResult> Post([FromForm] DateDto createDateDto, string barberEmail)
         {
+            if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+            if (createDateDto.UserId != currentId) return Forbid();
             var barber = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Email == barberEmail);
+            if (barber == null) return NotFound();
 
             Cita newDate = new Cita()
             {
                 Date = createDateDto.Date,
                 Hour = createDateDto.Hour,
-                UserId = createDateDto.UserId,
+                UserId = currentId,
                 PeluqueroId = barber.Id,
             };
 

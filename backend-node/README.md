@@ -21,3 +21,7 @@ Para iniciar la API con identidad es obligatorio establecer `APP_ORIGIN` (origen
 Las pruebas HTTP usan un repositorio en memoria como fixture, no comprueban el driver ni la migración MySQL. Antes de despliegue faltan pruebas de integración con MySQL real, limitación de intentos y protección frente a abuso, políticas de recuperación de cuenta, observabilidad, gestión operativa de sesiones y revisión de seguridad. La funcionalidad no está lista para producción. El atributo Secure de la cookie exige HTTPS en el navegador.
 
 El servicio aún no limita intentos de acceso ni protege frente a abuso. Una limitación en memoria por proceso no sería fiable en despliegues con varias instancias; es necesario un control compartido antes de publicarlo.
+
+## Profesionales (en desarrollo)
+
+`GET /api/professionals?businessId=<UUID>` devuelve únicamente el identificador y el nombre público de profesionales activos de ese negocio, sin requerir inicio de sesión. `POST /api/professionals` admite `businessId` y `displayName`; requiere Origin exacto y sesión. El identificador del actor se obtiene de la sesión y la autorización de administrador o propietario activo se comprueba por negocio en la capa de persistencia. No envía correo ni activa una cuenta de profesional. Las pruebas actuales usan un repositorio simulado y no verifican el funcionamiento de MySQL real; no está listo para producción.

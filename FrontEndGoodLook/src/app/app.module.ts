@@ -1,6 +1,6 @@
 import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -17,33 +17,26 @@ import { Calendar2Component } from './calendar2/calendar2.component';
 import { DatelistComponent } from './datelist/datelist.component';
 import { ServiceWorkerModule } from '@angular/service-worker';
 
-@NgModule({
-  declarations: [
-    AppComponent,
-    HeaderComponent,
-    BodyComponent,
-    FooterComponent,
-    NavComponent,
-    Page404Component,
-    SigninComponent,
-    SignupComponent,
-    ProfileComponent,
-    Calendar2Component,
-    DatelistComponent
-  ],
-  imports: [
-    BrowserModule,
-    AppRoutingModule,
-    HttpClientModule,
-    ReactiveFormsModule,
-    ServiceWorkerModule.register('ngsw-worker.js', {
-      enabled: !isDevMode(),
-      // Register the ServiceWorker as soon as the application is stable
-      // or after 30 seconds (whichever comes first).
-      registrationStrategy: 'registerWhenStable:30000'
-    })
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
-})
+@NgModule({ declarations: [
+        AppComponent,
+        HeaderComponent,
+        BodyComponent,
+        FooterComponent,
+        NavComponent,
+        Page404Component,
+        SigninComponent,
+        SignupComponent,
+        ProfileComponent,
+        Calendar2Component,
+        DatelistComponent
+    ],
+    bootstrap: [AppComponent], imports: [BrowserModule,
+        AppRoutingModule,
+        ReactiveFormsModule,
+        ServiceWorkerModule.register('ngsw-worker.js', {
+            enabled: !isDevMode(),
+            // Register the ServiceWorker as soon as the application is stable
+            // or after 30 seconds (whichever comes first).
+            registrationStrategy: 'registerWhenStable:30000'
+        })], providers: [provideHttpClient(withInterceptorsFromDi())] })
 export class AppModule { }

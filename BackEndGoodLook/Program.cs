@@ -1,5 +1,6 @@
 
 using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -55,6 +56,15 @@ namespace BackEndGoodLook
 
                     //  Idicamos la clave
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key))
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        if (!AuthenticatedUser.TryGetId(context.Principal, out _))
+                            context.Fail("Token has no valid user identity");
+                        return Task.CompletedTask;
+                    }
                 };
             });
 

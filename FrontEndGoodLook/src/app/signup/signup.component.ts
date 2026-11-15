@@ -6,9 +6,10 @@ import { Router } from '@angular/router';
 import { GoodlookService } from '../goodlook.service';
 
 @Component({
-  selector: 'app-signup',
-  templateUrl: './signup.component.html',
-  styleUrls: ['./signup.component.css']
+    selector: 'app-signup',
+    templateUrl: './signup.component.html',
+    styleUrls: ['./signup.component.css'],
+    standalone: false
 })
 export class SignupComponent {
 

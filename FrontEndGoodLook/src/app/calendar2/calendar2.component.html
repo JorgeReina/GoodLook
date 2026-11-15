@@ -1,16 +1,16 @@
 <div class="container">
-  
+
   <h2>Choice your Date</h2>
 
   <div class="table-container">
     <form [formGroup]="myForm" (ngSubmit)="onSubmit()">
-      
+
       <div class="div-elegant">
         <label for="date">Date:</label>
         <div class="prueba">
-        <input class="registro-input" type="date" formControlName="date" placeholder="Ingrese la fecha">
+          <input class="registro-input" type="date" formControlName="date" placeholder="Ingrese la fecha">
         </div>
-    
+
         <label for="hour">Hour:</label>
         <select class="registro-input" formControlName="hour">
           <option value="10:00">10:00</option>
@@ -18,19 +18,21 @@
           <option value="12:00">12:00</option>
           <option value="13:00">13:00</option>
           <option value="14:00">14:00</option>
-          <option value="15:00">15:00</option> 
+          <option value="15:00">15:00</option>
         </select>
-    
+
         <label for="barberEmail">Barber:</label>
         <select class="registro-input" formControlName="barberEmail">
-          <option *ngFor="let barber of barberList" [value]="barber.email">{{ barber.name }}</option>
+          @for (barber of barberList; track barber) {
+            <option [value]="barber.email">{{ barber.name }}</option>
+          }
         </select>
       </div>
-    
+
       <button class="button" type="submit" [disabled]="myForm.invalid">book haircut</button>
     </form>
   </div>
-  
+
 </div>
 
 <div class="container">

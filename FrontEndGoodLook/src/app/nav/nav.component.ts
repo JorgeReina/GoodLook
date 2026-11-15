@@ -3,9 +3,10 @@ import { GoodlookService } from '../goodlook.service';
 import { User } from 'src/model/User';
 
 @Component({
-  selector: 'app-nav',
-  templateUrl: './nav.component.html',
-  styleUrls: ['./nav.component.css']
+    selector: 'app-nav',
+    templateUrl: './nav.component.html',
+    styleUrls: ['./nav.component.css'],
+    standalone: false
 })
 export class NavComponent implements OnInit{
 

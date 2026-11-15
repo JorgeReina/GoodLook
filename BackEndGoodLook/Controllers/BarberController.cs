@@ -1,4 +1,5 @@
-﻿using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Models.Database;
+using BackEndGoodLook.Identity;
 using BackEndGoodLook.Models.Database.Entities;
 using BackEndGoodLook.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
@@ -20,16 +21,20 @@ namespace BackEndGoodLook.Controllers
 
         [Authorize(Roles = "barber")]
         [HttpGet("dateList")]
-        public IEnumerable<DateDto> GetDate(int Id)
+        public IActionResult GetDate(int Id)
         {
+            if (!AuthenticatedUser.TryGetId(User, out var currentId)) return Unauthorized();
+            if (currentId != Id) return Forbid();
             var user = _goodLookContext.Users.FirstOrDefault(x => x.Id == Id);
+            if (user == null) return NotFound();
             var barber = _goodLookContext.Peluqueros.FirstOrDefault(u => u.Email.Equals(user.Email));
+            if (barber == null) return NotFound();
 
             var dates = _goodLookContext.Citas.Where(cita => cita.PeluqueroId == barber.Id).ToList();
 
             var dateDtos = dates.Select(DatelistToDto);
 
-            return dateDtos;
+            return Ok(dateDtos);
         }
 
         private DateDto DatelistToDto(Cita cita)

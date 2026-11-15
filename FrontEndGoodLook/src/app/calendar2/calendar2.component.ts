@@ -4,9 +4,10 @@ import { GoodlookService } from '../goodlook.service';
 import { User } from 'src/model/User';
 
 @Component({
-  selector: 'app-calendar2',
-  templateUrl: './calendar2.component.html',
-  styleUrls: ['./calendar2.component.css']
+    selector: 'app-calendar2',
+    templateUrl: './calendar2.component.html',
+    styleUrls: ['./calendar2.component.css'],
+    standalone: false
 })
 export class Calendar2Component implements OnInit {
 
