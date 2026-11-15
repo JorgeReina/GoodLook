@@ -9,7 +9,7 @@ export class MysqlProfessionalsStore implements ProfessionalsStore {
   constructor(private readonly pool: Pool) {}
   async listActive(businessId: string): Promise<Professional[]> {
     const [rows] = await this.pool.execute<ProfessionalRow[]>(
-      'SELECT id, business_id AS businessId, display_name AS displayName FROM professionals WHERE business_id = ? AND active = 1 ORDER BY display_name, id',
+      'SELECT p.id, p.business_id AS businessId, p.display_name AS displayName FROM professionals p JOIN businesses b ON b.id=p.business_id WHERE p.business_id = ? AND p.active = 1 AND b.is_public = 1 ORDER BY p.display_name, p.id',
       [businessId],
     );
     return rows.map(({ id, businessId: company, displayName }) => ({ id, businessId: company, displayName }));

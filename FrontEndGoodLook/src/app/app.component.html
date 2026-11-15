@@ -1,5 +1,5 @@
 <div class="main-content">
-  <app-header class="header"></app-header>
+  @if (!pilotActive) { <app-header class="header"></app-header> }
   <router-outlet class="body"></router-outlet>
-  <app-footer class="footer"></app-footer>
+  @if (!pilotActive) { <app-footer class="footer"></app-footer> }
 </div>

@@ -8,6 +8,7 @@ type AgendaInput = Parameters<typeof listProfessionalAgenda>[1];
 export interface AppointmentHandlers {
   create(input: CreateInput): Promise<unknown>;
   agenda(input: AgendaInput): Promise<unknown>;
+  mine?(input: { actorId: string; from: string; to: string }): Promise<unknown>;
 }
 function queryString(value: unknown): string { return typeof value === 'string' ? value : ''; }
 export function appointmentRoutes(store: AuthStore, allowedOrigin: string, handlers: AppointmentHandlers): Router {
@@ -21,6 +22,15 @@ export function appointmentRoutes(store: AuthStore, allowedOrigin: string, handl
       const { businessId, professionalId, serviceId, startAt, notes } = req.body ?? {};
       const result = await handlers.create({actorId:user.id, businessId, professionalId, serviceId, startAt, notes});
       res.status(201).json(result);
+    } catch (error) { next(error); }
+  });
+  router.get('/me', async (req, res, next) => {
+    try {
+      const user = await sessionUser(req, store);
+      if (!user) { res.status(401).json({error:'Unauthorized'}); return; }
+      if (!handlers.mine) { res.status(503).json({error:'Unavailable'}); return; }
+      const result = await handlers.mine({actorId:user.id, from:queryString(req.query.from), to:queryString(req.query.to)});
+      res.json(result);
     } catch (error) { next(error); }
   });
   router.get('/agenda', async (req, res, next) => {

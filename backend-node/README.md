@@ -25,3 +25,11 @@ El servicio aún no limita intentos de acceso ni protege frente a abuso. Una lim
 ## Profesionales (en desarrollo)
 
 `GET /api/professionals?businessId=<UUID>` devuelve únicamente el identificador y el nombre público de profesionales activos de ese negocio, sin requerir inicio de sesión. `POST /api/professionals` admite `businessId` y `displayName`; requiere Origin exacto y sesión. El identificador del actor se obtiene de la sesión y la autorización de administrador o propietario activo se comprueba por negocio en la capa de persistencia. No envía correo ni activa una cuenta de profesional. Las pruebas actuales usan un repositorio simulado y no verifican el funcionamiento de MySQL real; no está listo para producción.
+
+### Catálogo y horarios (preliminar)
+
+`GET /api/businesses` y `GET /api/services?businessId=...` son públicos. Solo devuelven negocios publicados y sus servicios activos. El alta de servicios (`POST /api/services`), asignación (`POST /api/services/assign`) y actualización de horarios (`PUT /api/schedules`) exigen sesión, Origin autorizado y rol activo owner/admin del negocio; leer horarios (`GET /api/schedules`) requiere owner/admin o el profesional asignado. Las escrituras que afectan a un profesional bloquean su fila antes de cambiar asignaciones u horas. La API aún no ofrece edición/desactivación de servicios ni excepciones de horarios; no se ha validado MySQL ni concurrencia real.
+
+El catálogo y la reserva de citas requieren `businesses.is_public=TRUE` (migración 003). Los negocios existentes y nuevos quedan privados por defecto. Un owner/admin activo puede activar o desactivar publicación mediante `PUT /api/businesses/visibility` con `{ "businessId": "...", "isPublic": true }`, sesión y Origin correcto. La publicación no implica revisión de contenido ni verifica que el negocio haya configurado agenda. No publicar datos reales hasta verificar controles, privacidad y seguridad en MySQL real.
+
+`POST /api/businesses` requiere sesión y Origin autorizado, recibe `{name, timezone}` y crea el negocio privado junto a una membresía activa `owner` del usuario autenticado en una única transacción. La zona horaria debe ser un identificador aceptado por Intl/IANA. SQL de alta y rollback están cubiertos con conexión simulada; validación en MySQL real pendiente.

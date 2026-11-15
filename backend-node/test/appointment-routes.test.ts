@@ -13,6 +13,7 @@ const store: AuthStore = {
 };
 const appointments = {
   async create(input: any) { recorded = input; return {id:'booking-id'}; },
+  async mine(input: any) { recorded = input; return []; },
   async agenda(input: any) { recorded = input; if (input.professionalId === 'forbidden') throw new AppointmentError('forbidden','Forbidden'); return []; },
 };
 const origin='https://app.example.test';
@@ -42,4 +43,14 @@ test('agenda requires session and preserves service authorization',async()=>{
   assert.equal(forbidden.status,403);
   assert.equal(forbidden.headers.get('cache-control'),'no-store');
   assert.equal(recorded?.actorId,user.id);
+});
+
+test('customer appointments require a session and derive identity from that session', async () => {
+  const range='?from=2030-01-01T00%3A00%3A00.000Z&to=2030-02-01T00%3A00%3A00.000Z&actorId=attacker';
+  assert.equal((await fetch(base+path+'/me'+range)).status,401);
+  const response=await fetch(base+path+'/me'+range,{headers:{cookie}});
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('cache-control'),'no-store');
+  assert.equal(recorded?.actorId,user.id);
+  assert.equal(recorded?.from,'2030-01-01T00:00:00.000Z');
 });

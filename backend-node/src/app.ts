@@ -4,8 +4,12 @@ import type { AuthStore } from './auth/store.js';
 import { appointmentRoutes, type AppointmentHandlers } from './appointments/routes.js';
 import { professionalRoutes } from './professionals/routes.js';
 import type { ProfessionalService } from './professionals/service.js';
+import { invitationRoutes } from './invitations/routes.js';
+import type { InvitationService } from './invitations/service.js';
+import { catalogRoutes } from './catalog/routes.js';
+import type { CatalogService } from './catalog/service.js';
 
-export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService }) {
+export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService }) {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
@@ -18,6 +22,8 @@ if (options) {
   app.use('/api/auth', authRoutes(options.store, options.allowedOrigin));
   if (options.appointments) app.use('/api/appointments', appointmentRoutes(options.store, options.allowedOrigin, options.appointments));
   if (options.professionals) app.use('/api/professionals', professionalRoutes(options.store, options.allowedOrigin, options.professionals));
+  if (options.invitations) app.use('/api/invitations', invitationRoutes(options.store, options.allowedOrigin, options.invitations));
+  if (options.catalog) app.use('/api', catalogRoutes(options.store, options.allowedOrigin, options.catalog));
 }
 
 app.use((_req, res) => {

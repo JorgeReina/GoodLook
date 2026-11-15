@@ -78,7 +78,7 @@ export async function createAppointment(pool: AppointmentPool, input: CreateInpu
   return transaction(pool, async c => {
     const professional = rows<{user_id:string|null}>(await c.query('SELECT p.user_id FROM professionals p WHERE p.business_id = ? AND p.id = ? AND p.active = TRUE FOR UPDATE', [input.businessId,input.professionalId]));
     if (!professional.length) throw new AppointmentError('unavailable','Professional unavailable');
-    const services = rows<ServiceRow>(await c.query(`SELECT s.duration_minutes, s.price_cents, s.currency, b.timezone FROM services s JOIN professional_services ps ON ps.business_id = s.business_id AND ps.service_id = s.id JOIN businesses b ON b.id = s.business_id WHERE ps.business_id = ? AND ps.professional_id = ? AND s.id = ? AND s.active = TRUE FOR UPDATE`, [input.businessId,input.professionalId,input.serviceId]));
+    const services = rows<ServiceRow>(await c.query(`SELECT s.duration_minutes, s.price_cents, s.currency, b.timezone FROM services s JOIN professional_services ps ON ps.business_id = s.business_id AND ps.service_id = s.id JOIN businesses b ON b.id = s.business_id WHERE ps.business_id = ? AND ps.professional_id = ? AND s.id = ? AND s.active = TRUE AND b.is_public = TRUE FOR UPDATE`, [input.businessId,input.professionalId,input.serviceId]));
     const service = services[0];
     if (!service || !Number.isSafeInteger(service.duration_minutes) || service.duration_minutes <= 0 || !Number.isSafeInteger(service.price_cents) || service.price_cents < 0) throw new AppointmentError('unavailable','Service unavailable');
     const end = start + service.duration_minutes * 60_000;
@@ -112,5 +112,34 @@ export async function listProfessionalAgenda(pool: AppointmentPool, input: Agend
     const professional = rows<{user_id:string|null}>(await c.query('SELECT user_id FROM professionals WHERE business_id = ? AND id = ? FOR SHARE', [input.businessId,input.professionalId]));
     if (!professional.length || (membership[0].role === 'professional' && professional[0].user_id !== input.actorId)) throw new AppointmentError('forbidden','Forbidden');
     return rows<Record<string,unknown>>(await c.query('SELECT id, service_id, customer_user_id, start_at, end_at, status, notes FROM appointments WHERE business_id = ? AND professional_id = ? AND start_at < ? AND end_at > ? ORDER BY start_at, id', [input.businessId,input.professionalId,dbTime(to),dbTime(from)]));
+  });
+}
+
+interface CustomerAgendaInput { actorId: string; from: string; to: string; }
+interface CustomerAppointmentRow {
+  id: string; business_id: string; professional_id: string; service_id: string;
+  start_at: Date | string; end_at: Date | string; status: string; price_cents: number; currency: string;
+}
+function utcFromDatabase(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value.replace(' ', 'T') + 'Z');
+  if (!Number.isFinite(date.valueOf())) throw new Error('Invalid database timestamp');
+  return date.toISOString();
+}
+
+/** Lists only the authenticated customer's appointments; timestamps are UTC. */
+export async function listCustomerAppointments(pool: AppointmentPool, input: CustomerAgendaInput) {
+  requireId(input.actorId);
+  const from = parseUtc(input.from), to = parseUtc(input.to);
+  if (from >= to || to - from > 31 * 86_400_000) throw new AppointmentError('invalid', 'Invalid appointment range');
+  return transaction(pool, async c => {
+    const appointments = rows<CustomerAppointmentRow>(await c.query(
+      'SELECT id, business_id, professional_id, service_id, start_at, end_at, status, price_cents, currency FROM appointments WHERE customer_user_id = ? AND start_at >= ? AND start_at < ? ORDER BY start_at, id LIMIT 100',
+      [input.actorId, dbTime(from), dbTime(to)],
+    ));
+    return appointments.map(a => ({
+      id: a.id, businessId: a.business_id, professionalId: a.professional_id, serviceId: a.service_id,
+      startAt: utcFromDatabase(a.start_at), endAt: utcFromDatabase(a.end_at), status: a.status,
+      priceCents: a.price_cents, currency: a.currency,
+    }));
   });
 }

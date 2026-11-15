@@ -69,3 +69,4 @@ test('listing restricts SQL to requested business and active professionals', asy
   assert.match(mock.calls[0].sql, /business_id\s*=\s*\?/i);
   assert.match(mock.calls[0].sql, /active\s*=\s*(?:1|TRUE)/i);
 });
+test('public professionals list excludes unpublished businesses', async()=>{const mock=fakePool();await new MysqlProfessionalsStore(mock.pool).listActive(business);assert.match(mock.calls[0].sql,/is_public\s*=\s*(?:TRUE|1)/i);});

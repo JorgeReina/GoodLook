@@ -1,6 +1,6 @@
 import { NgModule, isDevMode } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { provideHttpClient, withInterceptorsFromDi, withXhr } from '@angular/common/http';
 import { ReactiveFormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -38,5 +38,5 @@ import { ServiceWorkerModule } from '@angular/service-worker';
             // Register the ServiceWorker as soon as the application is stable
             // or after 30 seconds (whichever comes first).
             registrationStrategy: 'registerWhenStable:30000'
-        })], providers: [provideHttpClient(withInterceptorsFromDi())] })
+        })], providers: [provideHttpClient(withXhr(), withInterceptorsFromDi())] })
 export class AppModule { }
