@@ -138,7 +138,6 @@ namespace BackEndGoodLook.Controllers
                 Id = (int)users.Id,
                 Name = users.Name,
                 Email = users.Email,
-                Password = users.Password,
                 Rol = users.Rol
             };
         }

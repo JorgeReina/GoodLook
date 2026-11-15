@@ -1,12 +1,21 @@
 import express, { type ErrorRequestHandler } from 'express';
+import { authRoutes } from './auth/routes.js';
+import type { AuthStore } from './auth/store.js';
+import { appointmentRoutes, type AppointmentHandlers } from './appointments/routes.js';
 
-export const app = express();
+export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers }) {
+const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
+
+if (options) {
+  app.use('/api/auth', authRoutes(options.store, options.allowedOrigin));
+  if (options.appointments) app.use('/api/appointments', appointmentRoutes(options.store, options.allowedOrigin, options.appointments));
+}
 
 app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
@@ -30,3 +39,6 @@ const handleError: ErrorRequestHandler = (error: unknown, _req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 };
 app.use(handleError);
+return app;
+}
+export const app = createApp();

@@ -1,0 +1,75 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { parseConfig, applyMigrations, checksum } from '../migrate-lib.mjs';
+
+const base = { DATABASE_URL: 'mysql://user:pass@127.0.0.1:3306/goodlook_test', GOODLOOK_MIGRATION_TARGET: 'test', MYSQL_ALLOW_INSECURE_LOCAL: 'true' };
+test('requires explicit target and blocks production by default', () => {
+  assert.throws(() => parseConfig({}), /DATABASE_URL/);
+  assert.throws(() => parseConfig({ DATABASE_URL: base.DATABASE_URL }), /TARGET/);
+  assert.throws(() => parseConfig({ ...base, GOODLOOK_MIGRATION_TARGET: 'production' }), /production/i);
+  assert.equal(parseConfig(base).database, 'goodlook_test');
+});
+
+function fakeConnection(existing = []) {
+  const rows = structuredClone(existing);
+  const events = [];
+  return {
+    rows, events,
+    async query(sql, params = []) {
+      events.push(sql);
+      if (sql.startsWith('SELECT GET_LOCK')) return [[{ acquired: 1 }]];
+      if (sql.startsWith('SELECT RELEASE_LOCK')) return [[{ released: 1 }]];
+      if (sql.startsWith('SELECT version')) return [rows];
+      if (sql.startsWith('INSERT INTO schema_migrations')) rows.push({ version: params[0], checksum: params[1], state: 'applying' });
+      if (sql.startsWith('UPDATE schema_migrations')) rows.find(r => r.version === params[0]).state = 'applied';
+      return [[]];
+    },
+  };
+}
+const item = { version: '001', name: '001_initial.sql', sql: 'CREATE TABLE fixture (id INT);' };
+test('records applying before DDL, then applied and does not replay', async () => {
+  const conn = fakeConnection();
+  await applyMigrations(conn, [item], 'testlock');
+  const insert = conn.events.findIndex(x => x.startsWith('INSERT INTO schema_migrations'));
+  const ddl = conn.events.indexOf(item.sql);
+  const update = conn.events.findIndex(x => x.startsWith('UPDATE schema_migrations'));
+  assert.ok(insert < ddl && ddl < update);
+  assert.equal(conn.rows[0].state, 'applied');
+  const before = conn.events.filter(x => x === item.sql).length;
+  await applyMigrations(conn, [item], 'testlock');
+  assert.equal(conn.events.filter(x => x === item.sql).length, before);
+});
+test('refuses interrupted and modified migrations before applying any DDL', async () => {
+  for (const row of [
+    { version: '001', checksum: checksum(item.sql), state: 'applying' },
+    { version: '001', checksum: '0'.repeat(64), state: 'applied' },
+  ]) {
+    const conn = fakeConnection([row]);
+    await assert.rejects(() => applyMigrations(conn, [item], 'testlock'));
+    assert.equal(conn.events.includes(item.sql), false);
+    assert.ok(conn.events.some(x => x.startsWith('SELECT RELEASE_LOCK')));
+  }
+});
+test('refuses concurrent execution if advisory lock unavailable', async () => {
+  const conn = fakeConnection();
+  conn.query = async sql => sql.startsWith('SELECT GET_LOCK') ? [[{ acquired: 0 }]] : (() => { throw Error('must not execute'); })();
+  await assert.rejects(() => applyMigrations(conn, [item], 'testlock'), /lock/i);
+});
+test('failed DDL leaves a durable applying marker and blocks retry', async () => {
+  const conn = fakeConnection();
+  const query = conn.query.bind(conn);
+  conn.query = async (sql, params) => {
+    if (sql === item.sql) throw new Error('simulated DDL failure');
+    return query(sql, params);
+  };
+  await assert.rejects(() => applyMigrations(conn, [item], 'testlock'), /DDL failure/);
+  assert.equal(conn.rows[0].state, 'applying');
+  await assert.rejects(() => applyMigrations(conn, [item], 'testlock'), /Interrupted/);
+});
+
+test('requires verified TLS except explicitly permitted loopback', () => {
+  assert.throws(() => parseConfig({ ...base, MYSQL_ALLOW_INSECURE_LOCAL: undefined }), /TLS/);
+  assert.throws(() => parseConfig({ ...base, DATABASE_URL: 'mysql://user:pass@db.example.test/goodlook_test' }), /TLS/);
+  assert.deepEqual(parseConfig({ ...base, DATABASE_URL: 'mysql://user:pass@db.example.test/goodlook_test', MYSQL_TLS: 'true' }).ssl, { rejectUnauthorized: true });
+  assert.equal(parseConfig(base).ssl, undefined);
+});

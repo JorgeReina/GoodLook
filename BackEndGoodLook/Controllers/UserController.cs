@@ -198,7 +198,6 @@ public class UserController : ControllerBase
             Id = users.Id,
             Name = users.Name,
             Email = users.Email,
-            Password = users.Password,
             Rol = users.Rol
         };
     }
