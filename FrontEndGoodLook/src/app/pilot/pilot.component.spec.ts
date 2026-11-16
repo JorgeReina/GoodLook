@@ -2,13 +2,14 @@ import { Subject, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PilotComponent } from './pilot.component';
 import { PilotApiService, type PilotAvailability } from './pilot-api.service';
+import { ChangeDetectorRef } from '@angular/core';
 
 describe('Pilot availability', () => {
   let api: jasmine.SpyObj<PilotApiService>;
   let component: PilotComponent;
   beforeEach(() => {
     api = jasmine.createSpyObj<PilotApiService>('PilotApiService', ['availability','createAppointment']);
-    component = new PilotComponent(api);
+    component = new PilotComponent(api, {markForCheck: () => {}} as ChangeDetectorRef);
     component.businessId = 'business'; component.professionalId = 'professional'; component.serviceId = 'service';
     component.user = {id:'user',email:'user@example.test',displayName:'User'};
   });
