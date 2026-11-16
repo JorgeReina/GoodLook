@@ -1,0 +1,8 @@
+{
+  "name": "goodlook-vercel-pilot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": { "build": "npm ci --prefix FrontEndGoodLook --ignore-scripts --no-audit --no-fund && npm run build --prefix FrontEndGoodLook -- --configuration=pilot" },
+  "dependencies": { "express": "^5.3.0", "mysql2": "^3.24.0" }
+}

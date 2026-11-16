@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "FrontEndGoodLook/dist/front-end-good-look",
+  "redirects": [ { "source": "/", "destination": "/piloto", "permanent": false } ],
+  "rewrites": [ { "source": "/piloto", "destination": "/index.html" } ]
+}

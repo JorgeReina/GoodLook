@@ -37,6 +37,7 @@
             "ngswConfigPath": "ngsw-config.json"
           },
           "configurations": {
+            "pilot": { "main": "src/main.pilot.ts", "index": { "input": "src/index.pilot.html", "output": "index.html" }, "tsConfig": "tsconfig.pilot.json", "serviceWorker": false, "outputHashing": "all", "optimization": { "scripts": true, "styles": true, "fonts": false } },
             "production": {
               "budgets": [
                 {
