@@ -107,9 +107,9 @@ export async function listProfessionalAgenda(pool: AppointmentPool, input: Agend
   const from = parseUtc(input.from), to = parseUtc(input.to);
   if (from >= to || to - from > 31 * 86_400_000) throw new AppointmentError('invalid', 'Invalid agenda range');
   return transaction(pool, async c => {
-    const membership = rows<{role:string}>(await c.query("SELECT role FROM memberships WHERE business_id = ? AND user_id = ? AND status = 'active' FOR SHARE", [input.businessId,input.actorId]));
+    const membership = rows<{role:string}>(await c.query("SELECT role FROM memberships WHERE business_id = ? AND user_id = ? AND status = 'active' LOCK IN SHARE MODE", [input.businessId,input.actorId]));
     if (!membership.length || !['owner','admin','professional'].includes(membership[0].role)) throw new AppointmentError('forbidden','Forbidden');
-    const professional = rows<{user_id:string|null}>(await c.query('SELECT user_id FROM professionals WHERE business_id = ? AND id = ? FOR SHARE', [input.businessId,input.professionalId]));
+    const professional = rows<{user_id:string|null}>(await c.query('SELECT user_id FROM professionals WHERE business_id = ? AND id = ? LOCK IN SHARE MODE', [input.businessId,input.professionalId]));
     if (!professional.length || (membership[0].role === 'professional' && professional[0].user_id !== input.actorId)) throw new AppointmentError('forbidden','Forbidden');
     return rows<Record<string,unknown>>(await c.query('SELECT id, service_id, customer_user_id, start_at, end_at, status, notes FROM appointments WHERE business_id = ? AND professional_id = ? AND start_at < ? AND end_at > ? ORDER BY start_at, id', [input.businessId,input.professionalId,dbTime(to),dbTime(from)]));
   });

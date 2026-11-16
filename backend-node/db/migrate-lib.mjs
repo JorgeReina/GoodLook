@@ -4,6 +4,20 @@ import { join } from 'node:path';
 
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
+export function migrationDialect(env) {
+  const dialect = env.GOODLOOK_MIGRATION_DIALECT ?? 'mysql';
+  if (!['mysql', 'mariadb'].includes(dialect)) throw new Error('Invalid migration dialect');
+  return dialect;
+}
+
+export async function verifyServerDialect(connection, dialect) {
+  const [rows] = await connection.query('SELECT VERSION() AS version');
+  const version = rows[0]?.version;
+  if (typeof version !== 'string') throw new Error('Cannot determine server dialect');
+  const maria = /mariadb/i.test(version);
+  if ((dialect === 'mariadb') !== maria || (!maria && !/^8\./.test(version))) throw new Error('Server dialect does not match selected migration dialect');
+}
+
 export function parseConfig(env) {
   if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
   const target = env.GOODLOOK_MIGRATION_TARGET;

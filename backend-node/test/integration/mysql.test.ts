@@ -1,13 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import type { AddressInfo } from 'node:net';
 import { createPool, type RowDataPacket } from 'mysql2/promise';
 import { createApp } from '../../src/app.js';
 import { MysqlAuthStore } from '../../src/auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from '../../src/auth/rate-limit.js';
 import { createAppointment, listProfessionalAgenda, type AppointmentPool } from '../../src/appointments/service.js';
+import { loadMigrations, applyMigrations, verifyServerDialect, migrationDialect } from '../../db/migrate-lib.mjs';
 
 // Hardcoded loopback-only ephemeral database; hostname is checked against the
 // container created by the wrapper before any schema or fixture is written.
@@ -15,10 +16,10 @@ if (process.env.GOODLOOK_RUN_MYSQL_TESTS !== '1' || !/^[a-f0-9]{64}$/.test(proce
   throw new Error('Use scripts/test-mysql-integration.sh; explicit isolated Docker container required');
 }
 const expectedContainer = process.env.GOODLOOK_TEST_CONTAINER_ID!;
-const pool = createPool({ host:'127.0.0.1', port:33317, user:'goodlook_test', password:'local_test_only_password', database:'goodlook_disposable_test', timezone:'Z', connectionLimit:5 });
+const pool = createPool({ host:'127.0.0.1', port:33317, user:'goodlook_test', password:'local_test_only_password', database:'goodlook_disposable_test', timezone:'Z', connectionLimit:5, multipleStatements:true });
 type R = RowDataPacket & Record<string, unknown>;
 
-test('isolated MySQL: schema, identity, tenant checks and racing bookings', async () => {
+test('isolated database: migrations, identity, tenant checks and racing bookings', async () => {
   let server: ReturnType<ReturnType<typeof createApp>['listen']> | undefined;
   try {
     const [identity] = await pool.query<R[]>('SELECT @@hostname AS host, DATABASE() AS db');
@@ -26,11 +27,15 @@ test('isolated MySQL: schema, identity, tenant checks and racing bookings', asyn
     assert.equal(identity[0].db, 'goodlook_disposable_test');
     const [existing] = await pool.query<R[]>("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()");
     assert.equal(existing.length, 0, 'database must be empty; refusing to write');
-    for (const filename of ['001_initial.sql','002_professional_invitations.sql','003_business_visibility.sql','004_auth_rate_limits.sql']) {
-      const sql = await readFile(new URL('../../db/migrations/' + filename, import.meta.url), 'utf8');
-      const statements = sql.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').split(';').map(s => s.trim()).filter(Boolean);
-      for (const statement of statements) await pool.query(statement);
-    }
+    const dialect = migrationDialect(process.env);
+    const conn = await pool.getConnection();
+    try {
+      await verifyServerDialect(conn, dialect);
+      const dir = dialect === 'mariadb' ? 'migrations-mariadb' : 'migrations';
+      const migrations = await loadMigrations(fileURLToPath(new URL(`../../db/${dir}/`, import.meta.url)));
+      await applyMigrations(conn, migrations, 'goodlook:integration');
+      await applyMigrations(conn, migrations, 'goodlook:integration');
+    } finally { conn.release(); }
 
     const realLimiter = new AuthRateLimiter(new MysqlRateLimitStore(pool), 'b'.repeat(64));
     const attempts = await Promise.all(Array.from({length:12}, () => realLimiter.check('192.0.2.44', 'ratelimit@example.test')));

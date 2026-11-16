@@ -73,3 +73,15 @@ test('requires verified TLS except explicitly permitted loopback', () => {
   assert.deepEqual(parseConfig({ ...base, DATABASE_URL: 'mysql://user:pass@db.example.test/goodlook_test', MYSQL_TLS: 'true' }).ssl, { rejectUnauthorized: true });
   assert.equal(parseConfig(base).ssl, undefined);
 });
+
+test('migration dialect is explicit and server version must match before writes', async () => {
+  const { migrationDialect, verifyServerDialect } = await import('../migrate-lib.mjs');
+  assert.equal(migrationDialect({}), 'mysql');
+  assert.equal(migrationDialect({GOODLOOK_MIGRATION_DIALECT:'mariadb'}), 'mariadb');
+  assert.throws(() => migrationDialect({GOODLOOK_MIGRATION_DIALECT:'other'}), /dialect/i);
+  const server = version => ({ query: async () => [[{version}]] });
+  await verifyServerDialect(server('10.11.19-MariaDB-log'), 'mariadb');
+  await verifyServerDialect(server('8.4.7'), 'mysql');
+  await assert.rejects(() => verifyServerDialect(server('10.11.19-MariaDB-log'), 'mysql'), /dialect/i);
+  await assert.rejects(() => verifyServerDialect(server('8.4.7'), 'mariadb'), /dialect/i);
+});

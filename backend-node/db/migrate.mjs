@@ -1,14 +1,16 @@
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseConfig, loadMigrations, applyMigrations } from './migrate-lib.mjs';
+import { parseConfig, loadMigrations, applyMigrations, migrationDialect, verifyServerDialect } from './migrate-lib.mjs';
 
 let conn;
 try {
   const config = parseConfig(process.env);
-  const migrations = await loadMigrations(join(dirname(fileURLToPath(import.meta.url)), 'migrations'));
+  const dialect = migrationDialect(process.env);
+  const migrations = await loadMigrations(join(dirname(fileURLToPath(import.meta.url)), dialect === 'mariadb' ? 'migrations-mariadb' : 'migrations'));
   const mysql = await import('mysql2/promise');
   conn = await mysql.createConnection(config);
+  await verifyServerDialect(conn, dialect);
   const lock = `goodlook:migrate:${createHash('sha256').update(config.database.toLowerCase()).digest('hex').slice(0, 40)}`;
   await applyMigrations(conn, migrations, lock);
   console.log('Migrations completed.');
