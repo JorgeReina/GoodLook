@@ -50,3 +50,16 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - API: alta de negocio privado con propietario; publicación explícita; creación de profesionales e invitaciones de un uso aceptadas por cuenta; alta/asignación de servicios y horarios; listado de citas propias. Invitaciones son transferibles, entrega manual; actualmente una cuenta solo puede vincularse a un perfil profesional globalmente. No se prueban carreras reales y faltan edición/desactivación, excepciones de horario, revocación e interfaz administrativa completa.
 - Pruebas de API: 65 pasan, más 6 del ejecutor con simulaciones; typecheck y build pasan. Se ha añadido suite de integración con MySQL 8 y carrera de dos reservas en Docker aislado; no se pudo ejecutar porque no hay Docker. No se han probado contra MySQL real ni E2E.
 - Publicación: propietario autoriza publicar; el proveedor legado usa perfiles IIS/MSDeploy y FTP sin conexión de publicación disponible aquí. No se ha modificado el servidor. Hay perfiles de usuario versionados con material cifrado; comprobar vigencia, rotar credenciales afectadas si procede y planificar limpieza segura, sin publicar valores.
+
+## Continuación: 16-11-2026
+
+- Se añade consulta pública de disponibilidad para negocio publicado, profesional y servicio activos y asociados, con horarios IANA y huecos orientativos; la creación sigue validando de forma transaccional. No se han comprobado consultas ni concurrencia con MySQL real.
+- Registro e inicio de sesión incorporan un limitador MySQL compartido y `AUTH_LIMIT_SECRET` obligatorio. Sus límites son preliminares: tras un proxy la IP de socket puede ser común, por lo que antes de desplegar se requieren controles en el borde, calibración y limpieza de contadores.
+- El piloto incorpora selector de fecha/hora en zona local del dispositivo, conversión a UTC y rechazo de cambios de hora ambiguos o inexistentes. Sigue pendiente conectar la selección de huecos, pruebas visuales, y verificar el recorrido real.
+- Verificación de esta revisión: 78 pruebas del backend y 6 del ejecutor de migraciones con dependencias simuladas, comprobación de tipos y compilación correctas. MySQL real y navegador continúan pendientes.
+
+## Continuación: disponibilidad y protección
+
+- El piloto consulta huecos orientativos para siete días, muestra la zona del negocio y el desfase, descarta respuestas antiguas y exige elegir un hueco devuelto antes de reservar. Se invalida el hueco si el servidor devuelve conflicto. Las pruebas de lógica y la compilación se han realizado; la prueba visual de navegador sigue pendiente.
+- La consulta de huecos une intervalos ocupados, limita volumen y aplica control compartido de 30 consultas/minuto por IP del socket. La autenticación limita primero por IP y evita crear contadores de identidad cuando ya se ha excedido; se dispone de limpieza por lotes de entradas antiguas.
+- Estos límites requieren configuración del proxy y limpieza programada; una IP compartida afecta a varios usuarios. No son protección suficiente contra tráfico distribuido. No se han ejecutado pruebas con MySQL real y el cálculo de disponibilidad es orientativo hasta confirmar la reserva.

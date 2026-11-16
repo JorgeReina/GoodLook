@@ -2,6 +2,7 @@ import { Router, type Request } from 'express';
 import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { AuthStore, User } from './store.js';
+import type { AuthRateLimiter } from './rate-limit.js';
 const scrypt = promisify(scryptCallback);
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const publicUser = (u: User) => ({ id: u.id, email: u.email, displayName: u.displayName });
@@ -32,12 +33,21 @@ async function checkPassword(password: string, stored: string): Promise<boolean>
   const key = await scrypt(password, salt, 64) as Buffer;
   return timingSafeEqual(key, Buffer.from(hex, 'hex'));
 }
-export function authRoutes(store: AuthStore, allowedOrigin: string): Router {
+export function authRoutes(store: AuthStore, allowedOrigin: string, limiter?: AuthRateLimiter): Router {
   const router = Router();
   router.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
   router.use((req, res, next) => {
     if (req.method !== 'GET' && req.headers.origin !== allowedOrigin) { res.status(403).json({ error: 'Forbidden origin' }); return; }
     next();
+  });
+  router.use(['/register','/login'], async (req,res,next) => {
+    if (req.method !== 'POST') { next(); return; }
+    if (!limiter) { res.status(503).json({error:'Service unavailable'}); return; }
+    try {
+      const result = await limiter.check(req.socket.remoteAddress ?? '', req.body?.email);
+      if (!result.allowed) {res.setHeader('Retry-After',String(Math.max(1,Math.ceil(result.retryAfter))));res.status(429).json({error:'Too many requests'});return;}
+      next();
+    } catch {res.status(503).json({error:'Service unavailable'});}
   });
   router.post('/register', async (req, res) => {
     const { email, password, displayName } = req.body ?? {};

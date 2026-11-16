@@ -20,7 +20,7 @@ Para iniciar la API con identidad es obligatorio establecer `APP_ORIGIN` (origen
 
 Las pruebas HTTP usan un repositorio en memoria como fixture, no comprueban el driver ni la migración MySQL. Antes de despliegue faltan pruebas de integración con MySQL real, limitación de intentos y protección frente a abuso, políticas de recuperación de cuenta, observabilidad, gestión operativa de sesiones y revisión de seguridad. La funcionalidad no está lista para producción. El atributo Secure de la cookie exige HTTPS en el navegador.
 
-El servicio aún no limita intentos de acceso ni protege frente a abuso. Una limitación en memoria por proceso no sería fiable en despliegues con varias instancias; es necesario un control compartido antes de publicarlo.
+El limitador compartido de acceso es preliminar y aún requiere validación con MySQL real, protección en el borde y controles operativos antes de su publicación.
 
 ## Profesionales (en desarrollo)
 
@@ -33,3 +33,15 @@ El servicio aún no limita intentos de acceso ni protege frente a abuso. Una lim
 El catálogo y la reserva de citas requieren `businesses.is_public=TRUE` (migración 003). Los negocios existentes y nuevos quedan privados por defecto. Un owner/admin activo puede activar o desactivar publicación mediante `PUT /api/businesses/visibility` con `{ "businessId": "...", "isPublic": true }`, sesión y Origin correcto. La publicación no implica revisión de contenido ni verifica que el negocio haya configurado agenda. No publicar datos reales hasta verificar controles, privacidad y seguridad en MySQL real.
 
 `POST /api/businesses` requiere sesión y Origin autorizado, recibe `{name, timezone}` y crea el negocio privado junto a una membresía activa `owner` del usuario autenticado en una única transacción. La zona horaria debe ser un identificador aceptado por Intl/IANA. SQL de alta y rollback están cubiertos con conexión simulada; validación en MySQL real pendiente.
+
+### Limitación de acceso
+
+La autenticación de registro e inicio de sesión exige migración `004_auth_rate_limits.sql` y la variable `AUTH_LIMIT_SECRET` como secreto hex aleatorio de al menos 32 bytes; mantenerla fuera del repositorio y conservarla igual entre instancias. El limitador utiliza HMAC para identificar sin guardar correo/IP en claro y contadores MySQL compartidos con bloqueo transaccional: 100 intentos por IP y 10 por identidad en ventanas fijas de 15 minutos, combinando registro y acceso. El exceso devuelve 429 y Retry-After; si la base falla, devuelve 503 y no autentica. No evita ataques distribuidos por sí solo: exige WAF y observación de abuso. Limitar por identidad permite que un atacante cause una denegación temporal de acceso a una cuenta; evaluar calibración y recuperación.
+
+Solo se usa la dirección directa del socket: se ignoran `Forwarded` y `X-Forwarded-For`. Detrás de un proxy todas las solicitudes compartirán la dirección del proxy, por lo que debe existir un limitador por IP fiable en el borde; nunca habilitar trust proxy genérico ni aceptar cabeceras de clientes arbitrarios. La tabla necesita limpieza programada de ventanas expiradas y política de retención antes de producción. Los tests de SQL son simulados; la prueba de concurrencia MySQL aislada está escrita pero no ejecutada aquí.
+
+### Mantenimiento del límite de acceso
+
+El límite se aplica primero a la dirección del socket y, solo si no se ha superado, a la identidad. Un cliente ya bloqueado no crea nuevos contadores de identidad. Los dos tipos de bucket tienen espacios HMAC distintos; cada transacción adquiere primero el bloqueo de IP y después, como máximo, el de una identidad. Sigue siendo un límite preliminar: una persona puede bloquear temporalmente una identidad conocida; tras un proxy la IP de socket puede ser común a muchos usuarios y bloquearlos en conjunto. Configurar protección en el borde con origen/IP verificados antes de una publicación y calibrar límites.
+
+La tabla necesita mantenimiento programado: después de `npm run build`, ejecutar `GOODLOOK_RATE_CLEANUP=YES node dist/cleanup-rate-limits.js` con `DATABASE_URL`, `APP_ORIGIN` y la configuración TLS habitual. Cada ejecución borra como máximo 500 filas con ventana anterior a 24 horas, según reloj UTC de MySQL; repetir con un planificador externo, y monitorizar acumulación. No hay cron automático ni límite duro de tamaño: una distribución de IPs, cuentas diferentes o ejecución insuficiente de la limpieza puede seguir generando muchos registros. No se leen ni registran correos o direcciones IP en claro. Estas operaciones aún requieren validación de concurrencia en MySQL real.

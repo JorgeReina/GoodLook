@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { createPool, type RowDataPacket } from 'mysql2/promise';
 import { createApp } from '../../src/app.js';
 import { MysqlAuthStore } from '../../src/auth/mysql-store.js';
+import { AuthRateLimiter, MysqlRateLimitStore } from '../../src/auth/rate-limit.js';
 import { createAppointment, listProfessionalAgenda, type AppointmentPool } from '../../src/appointments/service.js';
 
 // Hardcoded loopback-only ephemeral database; hostname is checked against the
@@ -25,15 +26,28 @@ test('isolated MySQL: schema, identity, tenant checks and racing bookings', asyn
     assert.equal(identity[0].db, 'goodlook_disposable_test');
     const [existing] = await pool.query<R[]>("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()");
     assert.equal(existing.length, 0, 'database must be empty; refusing to write');
-    for (const filename of ['001_initial.sql','002_professional_invitations.sql','003_business_visibility.sql']) {
+    for (const filename of ['001_initial.sql','002_professional_invitations.sql','003_business_visibility.sql','004_auth_rate_limits.sql']) {
       const sql = await readFile(new URL('../../db/migrations/' + filename, import.meta.url), 'utf8');
       const statements = sql.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').split(';').map(s => s.trim()).filter(Boolean);
       for (const statement of statements) await pool.query(statement);
     }
 
+    const realLimiter = new AuthRateLimiter(new MysqlRateLimitStore(pool), 'b'.repeat(64));
+    const attempts = await Promise.all(Array.from({length:12}, () => realLimiter.check('192.0.2.44', 'ratelimit@example.test')));
+    assert.equal(attempts.filter(result => result.allowed).length, 10);
+    assert.equal(attempts.filter(result => !result.allowed).length, 2);
+    const [beforeBuckets] = await pool.query<R[]>('SELECT COUNT(*) AS n FROM auth_rate_limits');
+    for (let index = 0; index < 110; index++) {
+      const result = await realLimiter.check('192.0.2.45', `unique${index}@example.test`);
+      assert.equal(result.allowed, index < 100);
+    }
+    const [afterBuckets] = await pool.query<R[]>('SELECT COUNT(*) AS n FROM auth_rate_limits');
+    // The blocked socket creates no further identity rows after the IP cap.
+    assert.equal(Number(afterBuckets[0].n) - Number(beforeBuckets[0].n), 101);
+
     const store = new MysqlAuthStore(pool);
     const origin = 'https://app.example.test';
-    server = createApp({store, allowedOrigin:origin}).listen(0, '127.0.0.1');
+    server = createApp({store, allowedOrigin:origin, authLimiter:new AuthRateLimiter(new MysqlRateLimitStore(pool),'a'.repeat(64))}).listen(0, '127.0.0.1');
     await new Promise<void>((resolve, reject) => { server!.once('listening',resolve); server!.once('error',reject); });
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const post = (path:string, body:unknown, cookie?:string) => fetch(base + path, { method:'POST', headers:{'content-type':'application/json',origin,...(cookie?{cookie}:{})}, body:JSON.stringify(body) });

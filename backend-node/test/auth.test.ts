@@ -21,7 +21,7 @@ class TestStore implements AuthStore {
 }
 const store = new TestStore();
 const origin = 'https://app.example.test';
-const server = createApp({ store, allowedOrigin: origin }).listen(0, '127.0.0.1');
+const server = createApp({ store, allowedOrigin: origin, authLimiter: {check:async()=>({allowed:true,retryAfter:0})} as never }).listen(0, '127.0.0.1');
 let base = '';
 before(async () => {
   await new Promise<void>((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });

@@ -1,0 +1,13 @@
+# Disponibilidad pública
+
+`GET /api/appointments/availability?businessId=<uuid>&professionalId=<uuid>&serviceId=<uuid>&from=<UTC>&to=<UTC>` devuelve `{timezone, slots:[{startAt,endAt}]}`. Las fechas deben ser ISO UTC con milisegundos (`2030-01-07T09:00:00.000Z`), con ventana máxima de siete días. Se devuelven solo candidatos futuros alineados a pasos de 15 minutos UTC que caben por completo en la ventana y la jornada laboral. La respuesta es `Cache-Control: no-store` y no incluye clientes, notas ni citas ocupadas.
+
+La consulta requiere negocio publicado, profesional y servicio activos y asociados; inexistencia, despublicación y asociación inválida producen el mismo error `unavailable`. Usa zona IANA del negocio, acepta cierre exacto a 24:00 y descarta huecos que cruzan medianoche o un cambio de offset. En la hora repetida de otoño los dos instantes son UTC distintos. Horarios irregulares, vacaciones, descansos y reglas de antelación más allá de exigir un instante futuro no están implementados.
+
+La lectura es una instantánea informativa, no reserva el hueco. La escritura debe volver a comprobar disponibilidad en transacción; es posible que dos clientes vean el mismo hueco. No se han verificado estas consultas ni la concurrencia sobre MySQL real: las pruebas usan conexión simulada. El servicio rechaza la consulta cuando encuentra más de 5000 citas solapadas en vez de truncarlas y anunciar huecos erróneos. Se ha incorporado un límite compartido; aún faltan observabilidad y validación en el entorno de despliegue.
+
+## Protección de consultas
+
+El cálculo ordena y fusiona los intervalos ocupados y los recorre linealmente al generar huecos; limita a 100 franjas semanales y 5000 citas por ventana y rechaza la consulta si se supera cualquier límite. No se truncan citas silenciosamente.
+
+La ruta requiere un limitador compartido MySQL: 30 peticiones por minuto por dirección IP del socket; el límite usa un HMAC con ámbito específico y el secreto `AUTH_LIMIT_SECRET`, sin guardar la IP en claro. Requiere la migración `004_auth_rate_limits.sql`. Se responde 429 con `Retry-After` cuando se alcanza el límite y 503 si el limitador no está configurado o falla su almacenamiento. No confía en `X-Forwarded-For`. Detrás de un proxy todos los clientes pueden compartir la misma IP y cuota: antes de desplegar, definir el límite en proxy confiable o un mecanismo explícito para identificar clientes; nunca habilitar confianza ciega en cabeceras. El límite es defensa básica, no protección contra tráfico distribuido; su estado requiere limpieza y mantenimiento de tabla. No se ha probado el comportamiento concurrente sobre MySQL real.

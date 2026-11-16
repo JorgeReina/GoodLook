@@ -41,3 +41,17 @@ describe('PilotApiService', () => {
     req.flush({});
   });
 });
+
+describe('availability API', () => {
+  let api: PilotApiService;
+  let http: HttpTestingController;
+  beforeEach(() => { TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] }); api = TestBed.inject(PilotApiService); http = TestBed.inject(HttpTestingController); });
+  afterEach(() => http.verify());
+  it('queries the selected business, professional, service and UTC range', () => {
+    const input = {businessId:'b', professionalId:'p', serviceId:'s', from:'2026-07-01T10:00:00.000Z', to:'2026-07-08T10:00:00.000Z'};
+    api.availability(input).subscribe();
+    const request = http.expectOne(req => req.url === '/api/appointments/availability');
+    for (const [key, value] of Object.entries(input)) expect(request.request.params.get(key)).toBe(value);
+    request.flush({timezone:'Europe/Madrid', slots:[]});
+  });
+});

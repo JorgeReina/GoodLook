@@ -7,6 +7,8 @@ export interface PilotService { id: string; businessId: string; name: string; du
 export interface PilotProfessional { id: string; businessId: string; displayName: string; }
 export interface NewPilotAppointment { businessId: string; professionalId: string; serviceId: string; startAt: string; notes?: string | null; }
 export interface PilotAppointment extends NewPilotAppointment { id: string; endAt: string; status: string; priceCents: number; currency: string; }
+export interface PilotAvailability { timezone: string; slots: {startAt: string; endAt: string}[]; }
+export interface AvailabilityQuery { businessId: string; professionalId: string; serviceId: string; from: string; to: string; }
 
 /** API same-origin; la sesión vive en una cookie HttpOnly gestionada por el servidor. */
 @Injectable({providedIn: 'root'})
@@ -24,6 +26,11 @@ export class PilotApiService {
   services(businessId: string) { return this.http.get<PilotService[]>('/api/services', {params: new HttpParams().set('businessId', businessId)}); }
   professionals(businessId: string) {
     return this.http.get<PilotProfessional[]>('/api/professionals', {params: new HttpParams().set('businessId', businessId)});
+  }
+  availability(input: AvailabilityQuery) {
+    let params = new HttpParams();
+    for (const [key, value] of Object.entries(input)) params = params.set(key, value);
+    return this.http.get<PilotAvailability>('/api/appointments/availability', {params});
   }
   createAppointment(input: NewPilotAppointment) {
     const {businessId, professionalId, serviceId, startAt, notes} = input;
