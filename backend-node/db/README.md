@@ -23,6 +23,12 @@ Los servicios y profesionales se desactivan en lugar de borrarse para preservar 
 
 ## Ejecutor versionado
 
+### Ensayo inicial en la base de prueba de MonsterASP
+
+El lanzador `db/monsterasp-migrate.mjs` apunta exclusivamente a `db80496.public.databaseasp.net/db80496` con TLS y certificado verificado. Antes de escribir comprueba la base seleccionada, MariaDB 10.11, cifrado de sesión y ausencia de tablas y vistas. Solo sirve para la primera migración de una base de prueba vacía; si falla, no repetir sin inspeccionar el estado porque el DDL puede quedar parcialmente aplicado.
+
+Para prepararlo, crear `backend-node/.env.monsterasp` local (ignorado por Git) con una línea `GOODLOOK_DB_PASSWORD="..."`, introduciendo la contraseña en privado, sin copiarla a documentación, terminal o chat. No añadir otros valores ni credenciales al repositorio. Con Node 24 y acceso remoto temporal autorizado, desde `backend-node` ejecutar `node --env-file=.env.monsterasp db/monsterasp-migrate.mjs`. Si el servidor presenta un certificado no confiable la conexión debe fallar; no desactivar la verificación. El lanzador no realiza pruebas de reservas ni aprovisiona datos.
+
 Desde la raíz de `backend-node`, tras `npm ci`, configurar `DATABASE_URL` como URL `mysql://...` y declarar explícitamente `GOODLOOK_MIGRATION_TARGET=test` o `development`; usar variables de entorno inyectadas de forma segura. La conexión requiere `MYSQL_TLS=true`, con verificación del certificado TLS. Solo para loopback (`localhost`, `127.0.0.1` o `::1`) puede permitirse conexión sin TLS mediante `MYSQL_ALLOW_INSECURE_LOCAL=true` explícito. Ejecutar:
 
 Para MariaDB 10.11 establecer además `GOODLOOK_MIGRATION_DIALECT=mariadb`; sin esta variable se usa la serie histórica MySQL. El ejecutor comprueba la versión del servidor antes de escribir y rechaza un motor distinto del seleccionado. Las series están en `migrations` y `migrations-mariadb` y sus checksums son independientes: no cambiar de serie sobre una base ya migrada. Las futuras migraciones deben mantenerse y verificarse en ambas series. La colación MariaDB `utf8mb4_unicode_520_ci` no es idéntica a la colación MySQL `utf8mb4_0900_ai_ci`; las comparaciones de texto y unicidad pueden diferir y requieren validación específica antes de producción.
