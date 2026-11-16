@@ -8,7 +8,7 @@ El catálogo debe contener datos. El piloto consulta horarios orientativos de lo
 
 ## Empaquetado aislado para Vercel
 
-La configuración de la raíz construye exclusivamente el componente `/piloto` como aplicación independiente; no compila ni navega las pantallas antiguas ni su URL de backend. La función `api/[...path].ts` recibe las peticiones `/api/...` en el mismo origen y exporta la aplicación Express sin abrir un puerto. `/` redirige a `/piloto`.
+La configuración de la raíz construye exclusivamente el componente `/piloto` como aplicación independiente; no compila ni navega las pantallas antiguas ni su URL de backend. La función `api/index.ts` recibe las peticiones `/api/...` en el mismo origen y exporta la aplicación Express sin abrir un puerto. `/` redirige a `/piloto`.
 
 Configurar en Vercel las variables sensibles mediante el panel o el gestor de secretos, nunca mediante commits o subiendo archivos `.env`. La API requiere `DATABASE_URL` (URL MySQL con credenciales codificadas), `MYSQL_TLS=true`, `APP_ORIGIN` igual al origen HTTPS del piloto y `AUTH_LIMIT_SECRET` aleatorio de al menos 32 bytes en hex. El acceso de la base desde Vercel requiere que MonsterASP permita conexiones externas; verificar certificado TLS y limitar exposición según las capacidades del proveedor. La compilación usa Node 24.
 

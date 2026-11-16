@@ -11,6 +11,10 @@ test('runtime exposes health and enforces origin without opening a listener itse
     assert.ok(address && typeof address !== 'string');
     const base = `http://127.0.0.1:${address.port}`;
     assert.equal((await fetch(`${base}/health`)).status, 200);
+    const me = await fetch(`${base}/api/auth/me?source=pilot`);
+    assert.equal(me.status, 401);
+    assert.deepEqual(await me.json(), { error: 'Unauthorized' });
+    assert.equal((await fetch(`${base}/api/unknown/deep`)).status, 404);
     assert.equal((await fetch(`${base}/api/auth/login`, { method: 'POST', headers: { origin: 'https://other.example.test', 'content-type': 'application/json' }, body: '{}' })).status, 403);
   } finally { await new Promise<void>((resolve, reject) => server.close(err => err ? reject(err) : resolve())); }
 });
