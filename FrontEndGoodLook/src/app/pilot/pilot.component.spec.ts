@@ -4,6 +4,33 @@ import { PilotComponent } from './pilot.component';
 import { PilotApiService, type PilotAvailability } from './pilot-api.service';
 import { ChangeDetectorRef } from '@angular/core';
 
+describe('Pilot registration', () => {
+  let api: jasmine.SpyObj<PilotApiService>;
+  let component: PilotComponent;
+  beforeEach(() => {
+    api = jasmine.createSpyObj<PilotApiService>('PilotApiService', ['register']);
+    component = new PilotComponent(api, {markForCheck: () => {}} as ChangeDetectorRef);
+    component.name = 'Prueba'; component.email = 'test@example.test'; component.password = 'test password';
+  });
+  it('explains missing name, invalid email and short password without sending a request', async () => {
+    component.name = '  '; await component.register();
+    expect(component.error).toContain('nombre');
+    component.name = 'Prueba'; component.email = 'invalid'; await component.register();
+    expect(component.error).toContain('correo');
+    component.email = 'test@example.test'; component.password = 'short'; await component.register();
+    expect(component.error).toContain('entre 10 y 128 caracteres');
+    expect(api.register).not.toHaveBeenCalled();
+  });
+  for (const [status, message] of [[400, 'datos'], [403, 'dirección'], [409, 'Ya existe'], [429, 'intentos'], [503, 'disponible']] as const) {
+    it(`explains a registration failure with status ${status}`, async () => {
+      api.register.and.returnValue(throwError(() => new HttpErrorResponse({status})));
+      await component.register();
+      expect(component.error).toContain(message);
+      expect(component.busy).toBeFalse();
+    });
+  }
+});
+
 describe('Pilot availability', () => {
   let api: jasmine.SpyObj<PilotApiService>;
   let component: PilotComponent;

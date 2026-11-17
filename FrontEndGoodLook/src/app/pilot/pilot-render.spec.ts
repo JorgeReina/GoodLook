@@ -11,6 +11,9 @@ describe('Pilot asynchronous rendering', () => {
     await TestBed.configureTestingModule({ imports: [PilotComponent], providers: [provideZonelessChangeDetection(), { provide: PilotApiService, useValue: api }] }).compileComponents();
     const fixture = TestBed.createComponent(PilotComponent);
     await fixture.whenStable();
+    fixture.componentInstance.name = 'Cliente de prueba';
+    fixture.componentInstance.email = 'user@example.test';
+    fixture.componentInstance.password = 'test password';
     const button = [...fixture.nativeElement.querySelectorAll('button')].find((element: HTMLButtonElement) => element.textContent?.includes('Crear cuenta')) as HTMLButtonElement;
     button.click();
     await fixture.whenStable();

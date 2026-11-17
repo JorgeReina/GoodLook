@@ -31,9 +31,22 @@ export class PilotComponent implements OnInit {
   }
   async register() {
     if (this.busy) return;
+    this.error = ''; this.message = '';
+    const name = this.name.trim(), email = this.email.trim();
+    if (!name) { this.error = 'Introduce tu nombre para crear una cuenta.'; this.changes.markForCheck(); return; }
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.error = 'Introduce un correo electrónico válido.'; this.changes.markForCheck(); return; }
+    if (this.password.length < 10 || this.password.length > 128) { this.error = 'La contraseña debe tener entre 10 y 128 caracteres.'; this.changes.markForCheck(); return; }
     this.busy = true; this.error = ''; this.message = '';
-    try { await lastValueFrom(this.api.register(this.name, this.email, this.password)); this.password = ''; this.message = 'Cuenta creada. Inicia sesión para continuar.'; }
-    catch (error) { this.error = httpStatus(error) === 409 ? 'Ya existe una cuenta con ese correo.' : 'No se ha podido crear la cuenta. Revisa los datos e inténtalo de nuevo.'; }
+    try { await lastValueFrom(this.api.register(name, email, this.password)); this.password = ''; this.message = 'Cuenta creada. Inicia sesión para continuar.'; }
+    catch (error) {
+      const status = httpStatus(error);
+      if (status === 400) this.error = 'Los datos no son válidos. Revisa nombre, correo y contraseña.';
+      else if (status === 403) this.error = 'Esta dirección no está autorizada. Abre la dirección principal de GoodLook e inténtalo de nuevo.';
+      else if (status === 409) this.error = 'Ya existe una cuenta con ese correo.';
+      else if (status === 429) this.error = 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+      else if (status === 503) this.error = 'El servicio no está disponible en este momento. Inténtalo de nuevo más tarde.';
+      else this.error = 'No se ha podido crear la cuenta. Comprueba tu conexión e inténtalo de nuevo.';
+    }
     finally { this.busy = false; this.changes.markForCheck(); }
   }
   async login() {
