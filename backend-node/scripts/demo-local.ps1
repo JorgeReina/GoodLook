@@ -121,8 +121,28 @@ try {
         throw 'Demo local: isolated migrations failed.'
     }
 
-    Write-Host "Demo local: isolated $Dialect database migrated at 127.0.0.1:33317. Sample data is pending."
-    if ($Mode -eq 'interactive') {
+    if ($Mode -eq 'test') {
+        $previousTestFlag = $env:GOODLOOK_RUN_MYSQL_TESTS
+        $previousContainerId = $env:GOODLOOK_TEST_CONTAINER_ID
+        Push-Location -LiteralPath $backend
+        try {
+            $env:GOODLOOK_RUN_MYSQL_TESTS = '1'
+            $env:GOODLOOK_TEST_CONTAINER_ID = $containerId
+            & node --import tsx --test test/integration/demo-seed.test.ts
+            if ($LASTEXITCODE -ne 0) {
+                throw 'Demo local: isolated seed integration failed.'
+            }
+        } finally {
+            $env:GOODLOOK_RUN_MYSQL_TESTS = $previousTestFlag
+            $env:GOODLOOK_TEST_CONTAINER_ID = $previousContainerId
+            Pop-Location
+        }
+    } else {
+        & node (Join-Path $backend 'db/demo-seed.mjs') $containerId
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Demo local: isolated seed failed.'
+        }
+        Write-Host "Demo local: isolated $Dialect database ready at 127.0.0.1:33317 with sample data."
         Write-Host "Project: $project. Press Ctrl+C to remove it."
         while ($true) { Start-Sleep -Seconds 1 }
     }
