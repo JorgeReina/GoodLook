@@ -116,7 +116,7 @@ try {
         throw 'Demo local: the running container did not publish the expected loopback address.'
     }
 
-    & node (Join-Path $backend 'db/demo-guard.mjs') $containerId $Dialect.ToLowerInvariant()
+    & node (Join-Path $backend 'db/demo-guard.mjs') $containerId $Dialect.ToLowerInvariant() $context $project
     if ($LASTEXITCODE -ne 0) {
         throw 'Demo local: isolated migrations failed.'
     }
@@ -124,10 +124,14 @@ try {
     if ($Mode -eq 'test') {
         $previousTestFlag = $env:GOODLOOK_RUN_MYSQL_TESTS
         $previousContainerId = $env:GOODLOOK_TEST_CONTAINER_ID
+        $previousDockerContext = $env:GOODLOOK_DEMO_DOCKER_CONTEXT
+        $previousDemoProject = $env:GOODLOOK_DEMO_PROJECT
         Push-Location -LiteralPath $backend
         try {
             $env:GOODLOOK_RUN_MYSQL_TESTS = '1'
             $env:GOODLOOK_TEST_CONTAINER_ID = $containerId
+            $env:GOODLOOK_DEMO_DOCKER_CONTEXT = $context
+            $env:GOODLOOK_DEMO_PROJECT = $project
             & node --import tsx --test test/integration/demo-seed.test.ts
             if ($LASTEXITCODE -ne 0) {
                 throw 'Demo local: isolated seed integration failed.'
@@ -135,10 +139,12 @@ try {
         } finally {
             $env:GOODLOOK_RUN_MYSQL_TESTS = $previousTestFlag
             $env:GOODLOOK_TEST_CONTAINER_ID = $previousContainerId
+            $env:GOODLOOK_DEMO_DOCKER_CONTEXT = $previousDockerContext
+            $env:GOODLOOK_DEMO_PROJECT = $previousDemoProject
             Pop-Location
         }
     } else {
-        & node (Join-Path $backend 'db/demo-seed.mjs') $containerId
+        & node (Join-Path $backend 'db/demo-seed.mjs') $containerId $context $project
         if ($LASTEXITCODE -ne 0) {
             throw 'Demo local: isolated seed failed.'
         }

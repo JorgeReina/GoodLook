@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'mysql2/promise';
-import { validateDemoTarget } from './demo-guard.mjs';
+import { validateDemoTarget, verifyDemoContainer } from './demo-guard.mjs';
 import { checksum, loadMigrations } from './migrate-lib.mjs';
 
 const target = {
@@ -67,11 +67,12 @@ function placeholders(rows, width) {
   return rows.map(() => tuple).join(', ');
 }
 
-async function requireAppliedMigrations(connection, version) {
-  if (typeof version !== 'string' || !(/mariadb/i.test(version) || /^8\./.test(version))) {
+async function requireAppliedMigrations(connection, version, dialect) {
+  if (typeof version !== 'string' ||
+      (dialect === 'mariadb' ? !/mariadb/i.test(version) : !/^8\./.test(version) || /mariadb/i.test(version))) {
     throw new Error('Demo local: unsupported database dialect.');
   }
-  const directory = /mariadb/i.test(version) ? 'migrations-mariadb' : 'migrations';
+  const directory = dialect === 'mariadb' ? 'migrations-mariadb' : 'migrations';
   const migrations = await loadMigrations(fileURLToPath(new URL('./' + directory + '/', import.meta.url)));
   const [applied] = await connection.query('SELECT version, checksum, state FROM schema_migrations ORDER BY version');
   if (applied.length !== migrations.length || migrations.some(({ version, sql }, index) => {
@@ -99,7 +100,12 @@ async function countMatchingRows(connection, { table, columns, keyLength, rows }
   return existing.length;
 }
 
-export async function seedDemo(connection, expectedContainerId) {
+export async function seedDemo(connection, expectedContainerId, demo) {
+  const dialect = verifyDemoContainer(expectedContainerId, demo);
+  await seedVerifiedDemo(connection, expectedContainerId, dialect);
+}
+
+async function seedVerifiedDemo(connection, expectedContainerId, dialect) {
   const { host, port, socketPath, stream } = connection.config;
   if (socketPath || stream) throw new Error('Demo local: unexpected database target.');
   const expected = { containerId: expectedContainerId, host, port };
@@ -113,7 +119,7 @@ export async function seedDemo(connection, expectedContainerId) {
   const [[result]] = await connection.query('SELECT GET_LOCK(?, 0) AS acquired', [lock]);
   if (result?.acquired !== 1) throw new Error('Demo local: migration or seed lock is unavailable.');
   try {
-    await requireAppliedMigrations(connection, identity.version);
+    await requireAppliedMigrations(connection, identity.version, dialect);
     await connection.beginTransaction();
     try {
       let matching = 0;
@@ -140,6 +146,8 @@ export async function seedDemo(connection, expectedContainerId) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
+    const containerId = process.argv[2];
+    const dialect = verifyDemoContainer(containerId, { context: process.argv[3], project: process.argv[4] });
     const connection = await createConnection({
       ...target,
       user: 'goodlook_test',
@@ -148,7 +156,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       connectTimeout: 5000,
     });
     try {
-      await seedDemo(connection, process.argv[2]);
+      await seedVerifiedDemo(connection, containerId, dialect);
     } finally {
       await connection.end();
     }

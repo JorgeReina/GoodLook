@@ -9,7 +9,11 @@ import { MysqlCatalogStore } from '../../src/catalog/mysql-store.js';
 import { MysqlProfessionalsStore } from '../../src/professionals/mysql-store.js';
 
 const containerId = process.env.GOODLOOK_TEST_CONTAINER_ID;
-if (process.env.GOODLOOK_RUN_MYSQL_TESTS !== '1' || !containerId || !/^[a-f0-9]{64}$/.test(containerId)) {
+const demo = {
+  context: process.env.GOODLOOK_DEMO_DOCKER_CONTEXT,
+  project: process.env.GOODLOOK_DEMO_PROJECT,
+};
+if (process.env.GOODLOOK_RUN_MYSQL_TESTS !== '1' || !containerId || !/^[a-f0-9]{64}$/.test(containerId) || !demo.context || !demo.project) {
   throw new Error('Use scripts/demo-local.ps1 -Mode test to provision the isolated database.');
 }
 
@@ -25,7 +29,7 @@ test('isolated seed loads twice, preserves later rows and refuses partial or cha
   });
   try {
     // Keep all fixture and appointment writes on the connection verified by seedDemo.
-    await seedDemo(connection, containerId);
+    await seedDemo(connection, containerId, demo);
     const appointmentPool: AppointmentPool = {
       async getConnection() {
         return {
@@ -69,7 +73,7 @@ test('isolated seed loads twice, preserves later rows and refuses partial or cha
     );
     const appointment = await createAppointment(appointmentPool, { ...search, actorId: customer, startAt: slots.slots[0].startAt });
 
-    await seedDemo(connection, containerId);
+    await seedDemo(connection, containerId, demo);
     assert.deepEqual(await catalog.listBusinesses(), businesses);
     assert.deepEqual(await catalog.list(business.id), services);
     assert.deepEqual(await roster.listActive(business.id), professionals);
@@ -86,7 +90,7 @@ test('isolated seed loads twice, preserves later rows and refuses partial or cha
 
     // Simulate a changed row with a reserved identifier, even under an equivalent collation.
     await connection.execute('UPDATE businesses SET name=? WHERE id=?', ['demo local', business.id]);
-    await assert.rejects(seedDemo(connection, containerId), /reserved fixture conflict/);
+    await assert.rejects(seedDemo(connection, containerId, demo), /reserved fixture conflict/);
     assert.equal((await catalog.listBusinesses())[0].name, 'demo local');
     await connection.execute('UPDATE businesses SET name=? WHERE id=?', [business.name, business.id]);
 
@@ -95,7 +99,7 @@ test('isolated seed loads twice, preserves later rows and refuses partial or cha
       [business.id, professionals[1].id, services[1].id],
     );
     try {
-      await assert.rejects(seedDemo(connection, containerId), /partial reserved fixture conflict/);
+      await assert.rejects(seedDemo(connection, containerId, demo), /partial reserved fixture conflict/);
       const [[remaining]] = await connection.execute<RowDataPacket[]>('SELECT COUNT(*) AS count FROM professional_services WHERE business_id=?', [business.id]);
       assert.equal(Number(remaining.count), 3);
     } finally {
