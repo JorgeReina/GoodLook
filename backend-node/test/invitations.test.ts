@@ -8,6 +8,7 @@ const token='a'.repeat(64);
 const valid: InvitationStore = {
   async issue(input) { assert.equal(input.actorId,a); assert.equal(input.businessId,b); assert.equal(input.professionalId,c); assert.notEqual(input.tokenHash,token); return true; },
   async accept(input) { assert.equal(input.actorId,a); assert.notEqual(input.tokenHash,token); return true; },
+  async revoke(input) { assert.deepEqual(input,{actorId:a,businessId:b,professionalId:c}); return true; },
 };
 test('admin creates invitation; only hashed token is persisted', async () => {
  const service = new InvitationService(valid, () => token);
@@ -16,6 +17,12 @@ test('admin creates invitation; only hashed token is persisted', async () => {
 test('authorized user accepts token without choosing a different user id', async () => {
  const service = new InvitationService(valid, () => token);
  assert.equal(await service.accept(a,token), undefined);
+});
+test('revocation derives scope from explicit identifiers', async () => {
+ const service = new InvitationService(valid);
+ assert.equal(await service.revoke(a,b,c),undefined);
+ await assert.rejects(service.revoke(a,b,'invalid'),/invalid_input/);
+ await assert.rejects(new InvitationService({...valid,revoke:async()=>false}).revoke(a,b,c),/unavailable/);
 });
 test('invalid identifiers, tokens and unauthorized operations fail closed', async () => {
  const service = new InvitationService({...valid, issue: async()=>false, accept:async()=>false}, () => token);

@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { MysqlMembershipStore } from './product/membership-store.js';
 import { ManagementService } from './product/management-service.js';
 import { MysqlManagementStore } from './product/management-store.js';
+import { MysqlAgendaStore } from './product/agenda-store.js';
 import { MysqlAuthStore } from './auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from './auth/rate-limit.js';
 import { loadConfig } from './config.js';
@@ -27,6 +28,7 @@ return createApp({
   publicCatalog: publicCatalogRoutes(pool),
   memberships: new MysqlMembershipStore(pool),
   management: new ManagementService(new MysqlManagementStore(pool, env.AUTH_LIMIT_SECRET ?? '')),
+  agenda: new MysqlAgendaStore(pool),
   authLimiter,
   availabilityLimiter,
   store: new MysqlAuthStore(pool),

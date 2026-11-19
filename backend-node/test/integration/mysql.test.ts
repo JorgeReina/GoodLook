@@ -14,6 +14,7 @@ import { loadMigrations, verifyServerDialect, migrationDialect } from '../../db/
 import { verifyProductSchemaUpgrade } from './product-schema.js';
 import { concurrentAt, verifyBookingIntegrity } from './booking-integrity.js';
 import { verifyManagementRaces } from './management-races.js';
+import { verifyAgendaAndInvitations } from './agenda-invitations.js';
 import { ManagementService } from '../../src/product/management-service.js';
 import { MysqlManagementStore } from '../../src/product/management-store.js';
 
@@ -165,6 +166,7 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     });
     await t.test('cross-location, idempotency and concurrent availability changes',()=>verifyBookingIntegrity(pool,booking,otherBusiness,otherService,staffUser));
     await t.test('HTTP management and booking races preserve confirmed appointments',()=>verifyManagementRaces(pool,store,base,origin,booking,owner));
+    await t.test('agenda roles and concurrent invitation acceptance',()=>verifyAgendaAndInvitations(pool));
   } finally {
     if (server) await new Promise<void>((resolve,reject)=>server!.close(e=>e?reject(e):resolve()));
     await pool.end();
