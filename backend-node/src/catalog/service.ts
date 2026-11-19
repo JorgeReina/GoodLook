@@ -29,9 +29,12 @@ export class CatalogService {
  }
  async assign(actor:unknown,business:unknown,professional:unknown,service:unknown) { return this.store.assign(id(actor),id(business),id(professional),id(service)); }
  async setHours(actor:unknown,business:unknown,professional:unknown,input:unknown) {
-  const a=id(actor),b=id(business),p=id(professional); if(!Array.isArray(input)||input.length>100) throw new CatalogError('invalid');
+  return this.store.setHours(id(actor),id(business),id(professional),validateWorkPeriods(input));
+ }
+}
+export function validateWorkPeriods(input:unknown):WorkPeriod[] {
+  if(!Array.isArray(input)||input.length>100) throw new CatalogError('invalid');
   const periods=input.map(value=>{ if(typeof value!=='object'||value===null) throw new CatalogError('invalid'); const {weekday,startTime,endTime}=value as Record<string,unknown>; if(!Number.isInteger(weekday)||Number(weekday)<1||Number(weekday)>7) throw new CatalogError('invalid');const start=minutes(startTime),end=minutes(endTime,true);if(start>=end) throw new CatalogError('invalid'); return {weekday:Number(weekday),startTime:startTime as string,endTime:endTime as string,start,end};});
   periods.sort((x,y)=>x.weekday-y.weekday||x.start-y.start);for(let i=1;i<periods.length;i++) if(periods[i].weekday===periods[i-1].weekday&&periods[i].start<periods[i-1].end) throw new CatalogError('invalid');
-  return this.store.setHours(a,b,p,periods.map(({weekday,startTime,endTime})=>({weekday,startTime,endTime})));
- }
+  return periods.map(({weekday,startTime,endTime})=>({weekday,startTime,endTime}));
 }

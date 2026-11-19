@@ -13,6 +13,9 @@ import { loadMigrations, verifyServerDialect, migrationDialect } from '../../db/
 
 import { verifyProductSchemaUpgrade } from './product-schema.js';
 import { concurrentAt, verifyBookingIntegrity } from './booking-integrity.js';
+import { verifyManagementRaces } from './management-races.js';
+import { ManagementService } from '../../src/product/management-service.js';
+import { MysqlManagementStore } from '../../src/product/management-store.js';
 
 // Hardcoded loopback-only ephemeral database; hostname is checked against the
 // container created by the wrapper before any schema or fixture is written.
@@ -59,6 +62,7 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     server = createApp({
       store, allowedOrigin:origin, authLimiter:new AuthRateLimiter(new MysqlRateLimitStore(pool),'a'.repeat(64)),
       publicCatalog:publicCatalogRoutes(pool),
+      management:new ManagementService(new MysqlManagementStore(pool,'a'.repeat(64))),
       appointments:{
         book:input=>createBooking(pool,input),
         create:input=>createAppointment(pool,input),
@@ -160,6 +164,7 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
       assert.deepEqual(await invalid.json(),{code:'invalid_input'});
     });
     await t.test('cross-location, idempotency and concurrent availability changes',()=>verifyBookingIntegrity(pool,booking,otherBusiness,otherService,staffUser));
+    await t.test('HTTP management and booking races preserve confirmed appointments',()=>verifyManagementRaces(pool,store,base,origin,booking,owner));
   } finally {
     if (server) await new Promise<void>((resolve,reject)=>server!.close(e=>e?reject(e):resolve()));
     await pool.end();

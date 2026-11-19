@@ -13,8 +13,10 @@ import type { AuthRateLimiter } from './auth/rate-limit.js';
 import type { AvailabilityLimiter } from './appointments/rate-limit.js';
 import type { MembershipStore } from './product/membership-store.js';
 import { membershipRoutes } from './product/routes.js';
+import { managementRoutes } from './product/management-routes.js';
+import type { ManagementService } from './product/management-service.js';
 
-export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService; authLimiter?: AuthRateLimiter; availabilityLimiter?: AvailabilityLimiter; publicCatalog?: express.Router; memberships?: MembershipStore }) {
+export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService; authLimiter?: AuthRateLimiter; availabilityLimiter?: AvailabilityLimiter; publicCatalog?: express.Router; memberships?: MembershipStore; management?: ManagementService }) {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
@@ -31,7 +33,8 @@ if (options) {
   if (options.invitations) app.use('/api/invitations', invitationRoutes(options.store, options.allowedOrigin, options.invitations));
   if (options.memberships) app.use('/api/me', membershipRoutes(options.store, options.memberships));
   if(options.publicCatalog) app.use('/api/catalog',options.publicCatalog);
-  if (options.catalog) app.use('/api', catalogRoutes(options.store, options.allowedOrigin, options.catalog));
+  if (options.management) app.use('/api/manage/businesses', managementRoutes(options.store, options.allowedOrigin, options.management));
+  if (options.catalog) app.use('/api', catalogRoutes(options.store, options.allowedOrigin, options.catalog, options.management));
 }
 
 app.use((_req, res) => {
