@@ -24,21 +24,23 @@ export function publicCatalogRoutes(pool:Pool) {
     res.json(rows);
   });
   router.get('/businesses/:id/services',async(req,res)=>{
-    if(!uuid.test(req.params.id)){res.status(400).json({code:'invalid_input'});return;}
-    if(!await isPublished(pool,req.params.id)){res.status(404).json({code:'not_found'});return;}
+    const businessId = req.params.id.toLowerCase();
+    if(!uuid.test(businessId)){res.status(400).json({code:'invalid_input'});return;}
+    if(!await isPublished(pool,businessId)){res.status(404).json({code:'not_found'});return;}
     const [rows]=await pool.execute<RowDataPacket[]>(`SELECT DISTINCT s.id,s.business_id AS businessId,s.name,s.description,
-      s.duration_minutes AS durationMinutes,s.price_cents AS priceCents,s.currency ${offers} AND b.id=? ORDER BY s.name,s.id`,[req.params.id]);
+      s.duration_minutes AS durationMinutes,s.price_cents AS priceCents,s.currency ${offers} AND b.id=? ORDER BY s.name,s.id`,[businessId]);
     res.json(rows.map(row=>({...row,active:true})));
   });
   router.get('/businesses/:id/professionals',async(req,res)=>{
+    const businessId = req.params.id.toLowerCase();
     const service=req.query.serviceId;
-    if(!uuid.test(req.params.id)||typeof service!=='string'||!uuid.test(service)){res.status(400).json({code:'invalid_input'});return;}
-    if(!await isPublished(pool,req.params.id)){res.status(404).json({code:'not_found'});return;}
+    if(!uuid.test(businessId)||typeof service!=='string'||!uuid.test(service)){res.status(400).json({code:'invalid_input'});return;}
+    if(!await isPublished(pool,businessId)){res.status(404).json({code:'not_found'});return;}
     const [rows]=await pool.execute<RowDataPacket[]>(`SELECT p.id,p.display_name AS displayName,s.id AS serviceId ${offers}
       AND b.id=? AND EXISTS (SELECT 1 FROM professional_services selected JOIN services wanted
         ON wanted.business_id=selected.business_id AND wanted.id=selected.service_id AND wanted.active=TRUE
         WHERE selected.business_id=b.id AND selected.professional_id=p.id AND selected.active=TRUE AND selected.service_id=?)
-      ORDER BY p.display_name,p.id,s.id`,[req.params.id,service]);
+      ORDER BY p.display_name,p.id,s.id`,[businessId,service.toLowerCase()]);
     const staff=new Map<string,Staff>();
     for(const row of rows){
       const professional: Staff = staff.get(row.id) ?? {id:row.id,displayName:row.displayName,active:true,linked:true,serviceIds:[]};

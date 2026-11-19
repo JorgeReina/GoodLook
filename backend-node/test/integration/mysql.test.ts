@@ -120,6 +120,10 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
       assert.deepEqual(await services.json(),[{id:service,businessId:business,name:'Cut',description:null,durationMinutes:30,priceCents:1500,currency:'EUR',active:true}]);
       const staff = await fetch(base+`/api/catalog/businesses/${business}/professionals?serviceId=${service}`);
       assert.deepEqual(await staff.json(),[{id:professional,displayName:'Pro',active:true,linked:true,serviceIds:[service]}]);
+      const upperCaseServices = await fetch(base+`/api/catalog/businesses/${business.toUpperCase()}/services`);
+      assert.equal(upperCaseServices.status,200);
+      const upperCaseFilter = await fetch(base+`/api/catalog/businesses/${business.toUpperCase()}/professionals?serviceId=${service.toUpperCase()}`);
+      assert.deepEqual(await upperCaseFilter.json(),[{id:professional,displayName:'Pro',active:true,linked:true,serviceIds:[service]}]);
 
       const loginAgain = await post('/api/auth/login',{email:'one@example.test',password:'test password only'});
       const session = loginAgain.headers.get('set-cookie')?.split(';')[0];
