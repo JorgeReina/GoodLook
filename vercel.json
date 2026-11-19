@@ -4,5 +4,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "FrontEndGoodLook/dist/front-end-good-look",
   "redirects": [ { "source": "/", "destination": "/piloto", "permanent": false } ],
-  "rewrites": [ { "source": "/api/:path*", "destination": "/api/index" }, { "source": "/piloto", "destination": "/index.html" } ]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/piloto", "destination": "/index.html" },
+    { "source": "/producto", "destination": "/producto/index.html" },
+    { "source": "/producto/:page(acceso|mis-citas|mi-agenda|gestion|invitacion|piloto|sesion-no-disponible|sin-acceso)", "destination": "/producto/index.html" },
+    { "source": "/producto/:page(negocios|reservar)/:id", "destination": "/producto/index.html" }
+  ]
 }
