@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import type { Professional, ProfessionalsStore } from './service.js';
+import { lockBusiness } from '../appointments/booking-locks.js';
 
 interface ProfessionalRow extends RowDataPacket { id: string; businessId: string; displayName: string }
 interface MembershipRow extends RowDataPacket { role: string }
@@ -20,6 +21,7 @@ export class MysqlProfessionalsStore implements ProfessionalsStore {
     try {
       await connection.beginTransaction();
       active = true;
+      await lockBusiness(connection, businessId);
       const [rows] = await connection.execute<MembershipRow[]>(
         "SELECT role FROM memberships WHERE business_id = ? AND user_id = ? AND status = 'active' FOR UPDATE",
         [businessId, actorId],

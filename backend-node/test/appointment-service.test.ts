@@ -13,8 +13,9 @@ class Connection implements SqlConnection {
   release() { this.released++; }
   async query(sql: string, params: readonly unknown[] = []): Promise<[unknown, unknown]> {
     this.calls.push({ sql, params });
-    if (sql.includes('FROM professionals p') && sql.includes('FOR UPDATE')) return [[...(this.active ? [{ user_id: this.professionalUserId }] : [])], []];
+    if (sql.includes('FROM professionals p') && sql.includes('FOR UPDATE')) return [[{ user_id: this.professionalUserId, active: this.active }], []];
     if (sql.includes('FROM services s')) return [[...(this.publicBusiness ? [{ duration_minutes: this.duration, price_cents: 1500, currency: 'EUR', timezone: 'Europe/Madrid' }] : [])], []];
+    if (sql.includes('FROM professional_closures')) return [[],[]];
     if (sql.includes('FROM working_hours')) return [[...(this.hours ? [{ start_seconds: 9 * 3600, end_seconds: 18 * 3600 }] : [])], []];
     if (sql.includes('FROM appointments') && sql.includes('FOR UPDATE')) return [[...(this.conflict ? [{ id: id(8) }] : [])], []];
     if (sql.includes('FROM memberships')) return [[...(this.membership ? [{ role: this.membership }] : [])], []];
@@ -37,7 +38,7 @@ test('creates own booking using server-side service duration and price inside tr
   const overlaps = db.calls.findIndex(c => c.sql.includes('FROM appointments') && c.sql.includes('FOR UPDATE'));
   const insert = db.calls.findIndex(c => c.sql.includes('INSERT INTO appointments'));
   assert.ok(lock >= 0 && lock < overlaps && overlaps < insert);
-  assert.deepEqual(db.calls[overlaps].params.slice(0,2), [details.businessId, details.professionalId]);
+  assert.deepEqual(db.calls[overlaps].params.slice(0, 2),[details.professionalId,db.professionalUserId]);
 });
 
 test('overlap, unavailable professional or outside hours rolls back without insert', async () => {

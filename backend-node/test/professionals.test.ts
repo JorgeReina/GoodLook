@@ -31,6 +31,10 @@ function fakePool(role: string | null = 'owner') {
     commit: async () => { lifecycle.push('commit'); },
     rollback: async () => { lifecycle.push('rollback'); },
     release: () => { lifecycle.push('release'); },
+    query: async (sql: string, params: unknown[]) => {
+      calls.push({ sql, params });
+      return [[], []];
+    },
     execute: async (sql: string, params: unknown[]) => {
       calls.push({ sql, params });
       return sql.startsWith('SELECT') ? [role ? [{ role }] : [], []] : [{ affectedRows: 1 }, []];
@@ -45,10 +49,12 @@ test('creation locks membership, scopes it to actor and business, then commits',
   const created = await service.create(actor, business, '  Pepa  ');
   assert.equal(created.displayName, 'Pepa');
   assert.equal(created.businessId, business);
-  assert.deepEqual(mock.calls[0].params, [business, actor]);
-  assert.match(mock.calls[0].sql, /FOR UPDATE/i);
-  assert.match(mock.calls[0].sql, /status\s*=\s*'active'/i);
-  assert.deepEqual(mock.calls[1].params.slice(1), [business, 'Pepa']);
+  assert.deepEqual(mock.calls[0].params, [business]);
+  assert.match(mock.calls[0].sql, /FROM businesses.*FOR UPDATE/i);
+  assert.deepEqual(mock.calls[1].params, [business, actor]);
+  assert.match(mock.calls[1].sql, /FOR UPDATE/i);
+  assert.match(mock.calls[1].sql, /status\s*=\s*'active'/i);
+  assert.deepEqual(mock.calls[2].params.slice(1), [business, 'Pepa']);
   assert.deepEqual(mock.lifecycle, ['begin', 'commit', 'release']);
 });
 
@@ -57,7 +63,7 @@ test('professional role or missing membership cannot create a professional', asy
     const mock = fakePool(role);
     const service = new ProfessionalService(new MysqlProfessionalsStore(mock.pool));
     await assert.rejects(() => service.create(actor, business, 'Pepa'), (error: unknown) => error instanceof ProfessionalError && error.code === 'forbidden');
-    assert.equal(mock.calls.length, 1);
+    assert.equal(mock.calls.length, 2);
     assert.deepEqual(mock.lifecycle, ['begin', 'rollback', 'release']);
   }
 });
