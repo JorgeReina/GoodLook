@@ -23,6 +23,10 @@ describe('Carcasa GoodLook', () => {
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/gestion');
     fixture.detectChanges();
+    http.expectOne('/api/manage/businesses/studio').flush({
+      business: { id: 'studio', name: 'Estudio', sector: null, address: null, timezone: 'Europe/Madrid', isPublic: false },
+      services: [], staff: [],
+    });
     await fixture.whenStable();
 
     const host: HTMLElement = fixture.nativeElement;

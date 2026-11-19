@@ -11,6 +11,8 @@
         }
         @if (session.managementMemberships().length) {
           <a routerLink="/gestion" routerLinkActive="gl-current" ariaCurrentWhenActive="page">Gestión</a>
+        } @else {
+          <a routerLink="/gestion" [queryParams]="{ alta: '1' }">Registrar negocio</a>
         }
         <button matButton="outlined" type="button" [disabled]="endingSession()" (click)="logout()">
           {{ endingSession() ? 'Cerrando sesión…' : 'Cerrar sesión' }}
