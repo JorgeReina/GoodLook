@@ -10,7 +10,7 @@ async function run(dialect, mode, signal) {
   await withNewDemo(dialect, async capability => {
     await migrateDemo(capability);
     if (mode === 'test') {
-      const { verifyDemoSeed } = await import('../test/integration/demo-seed.test.ts');
+      const { verifyDemoSeed } = await import('../test/integration/demo-seed.ts');
       await verifyDemoSeed(capability);
       console.log('Demo local: isolated seed integration passed (' + dialect + ').');
     } else {
