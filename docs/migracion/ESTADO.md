@@ -105,3 +105,8 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - La semilla pasó su integración en MySQL 8.4 y MariaDB 10.11. En la rama de migración también pasaron 87 pruebas de API, 33 de base de datos, la comprobación de tipos y la compilación del backend.
 - El recorrido local en Chrome Headless con MySQL 8.4 completó registro, inicio de sesión, consulta de huecos, reserva y consulta de la cita tras recargar. El guion de navegador fue temporal. El cierre interactivo con Enter y Ctrl+C retiró los recursos propios en una consola de Windows. Una interrupción forzada sin consola requirió retirar manualmente los dos recursos identificados.
 - La regresión de migraciones, aislamiento y reservas simultáneas pasó en ambos motores, cada uno en un contenedor local desechable. El siguiente bloque pendiente es el protocolo de reservas frente a cambios de configuración.
+
+## Retirada del código .NET del repositorio
+
+- Se retiran el backend anterior (`BackEndGoodLook`) y su suite de regresión (`LegacySecurityTests`). Las menciones de .NET en los apartados anteriores registran el estado histórico.
+- El piloto de Vercel usa Angular y la API Node. El frontend anterior conserva su integración histórica con el servicio legado alojado fuera de este repositorio. La retirada de código no cambia ese servicio, su base de datos ni el historial de Git.
