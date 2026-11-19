@@ -1,5 +1,6 @@
 import { createPool } from 'mysql2/promise';
 import { createApp } from './app.js';
+import { MysqlMembershipStore } from './product/membership-store.js';
 import { MysqlAuthStore } from './auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from './auth/rate-limit.js';
 import { loadConfig } from './config.js';
@@ -20,5 +21,5 @@ const pool = createPool({ host: db.hostname, port: db.port ? Number(db.port) : 3
 const appointmentsPool = pool as unknown as AppointmentPool;
 const authLimiter = new AuthRateLimiter(new MysqlRateLimitStore(pool), env.AUTH_LIMIT_SECRET ?? '');
 const availabilityLimiter = new AvailabilityRateLimiter(new MysqlAvailabilityRateStore(pool), env.AUTH_LIMIT_SECRET ?? '');
-return createApp({ authLimiter, availabilityLimiter, store: new MysqlAuthStore(pool), allowedOrigin: config.origin, catalog: new CatalogService(new MysqlCatalogStore(pool)), invitations: new InvitationService(new MysqlInvitationStore(pool)), professionals: new ProfessionalService(new MysqlProfessionalsStore(pool)), appointments: { create: input => createAppointment(appointmentsPool, input), agenda: input => listProfessionalAgenda(appointmentsPool, input), mine: input => listCustomerAppointments(appointmentsPool, input), availability: input => publicAvailability(appointmentsPool, input) } });
+return createApp({ memberships: new MysqlMembershipStore(pool), authLimiter, availabilityLimiter, store: new MysqlAuthStore(pool), allowedOrigin: config.origin, catalog: new CatalogService(new MysqlCatalogStore(pool)), invitations: new InvitationService(new MysqlInvitationStore(pool)), professionals: new ProfessionalService(new MysqlProfessionalsStore(pool)), appointments: { create: input => createAppointment(appointmentsPool, input), agenda: input => listProfessionalAgenda(appointmentsPool, input), mine: input => listCustomerAppointments(appointmentsPool, input), availability: input => publicAvailability(appointmentsPool, input) } });
 }
