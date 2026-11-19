@@ -56,6 +56,8 @@ describe('Producto: sesión y espacios', () => {
     expect(router.url).toBe('/mis-citas');
     await router.navigateByUrl('/gestion');
     expect(router.url).toBe('/sin-acceso');
+    await router.navigateByUrl('/gestion?alta=1');
+    expect(router.url).toBe('/gestion?alta=1');
   });
 
   it('permite a un profesional vinculado abrir agenda solo para su negocio y perfil', async () => {

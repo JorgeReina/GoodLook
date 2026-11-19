@@ -72,5 +72,18 @@ a { color: inherit; }
   overflow-wrap: anywhere;
 }
 .gl-status-error { border-color: var(--gl-error); color: var(--gl-error); }
+
+.gl-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; margin-block: .85rem; }
+.gl-work-panel { margin-block: 1rem; padding: 1rem; background: var(--gl-surface); border: 1px solid var(--gl-line); border-radius: .85rem; min-width: 0; }
+.gl-grid-form { display: grid; gap: .8rem; align-items: end; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); margin-block: .85rem; }
+.gl-grid-form label, .gl-work-panel > label { display: grid; gap: .2rem; min-width: 0; }
+.gl-work-panel input:not([type=checkbox]), .gl-work-panel select, #agenda-business { font: inherit; max-width: 100%; padding: .45rem; }
+.gl-work-panel button:not([matButton]), .gl-actions button:not([matButton]) { font: inherit; padding: .45rem .65rem; cursor: pointer; }
+.gl-work-panel fieldset { margin-block: 1rem; min-width: 0; border: 1px solid var(--gl-line); }
+.gl-work-panel .gl-checkbox { display: flex; align-items: center; gap: .4rem; }
+.gl-week { display: grid; gap: .65rem; }
+.gl-week .gl-work-panel { margin: 0; overflow-wrap: anywhere; }
+.gl-week-grid { grid-template-columns: repeat(7, minmax(10rem, 1fr)); overflow-x: auto; padding: .2rem; }
+.gl-appointment { border-inline-start: .2rem solid var(--gl-accent); padding-inline-start: .65rem; margin-block: .8rem; }
 .gl-main > gl-status { display: block; margin-block-end: 1rem; }
 [matButton] { min-height: 2.75rem; }

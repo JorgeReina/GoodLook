@@ -47,6 +47,10 @@ export class SessionService {
     return this.api.logout().pipe(tap(() => this.expire()));
   }
 
+  refresh(): Observable<SessionState> {
+    return this.load(this.api.me());
+  }
+
   expire() {
     this.pending = undefined;
     this.state.set({ status: 'anonymous' });

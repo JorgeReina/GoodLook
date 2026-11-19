@@ -17,6 +17,7 @@ const protectSpace: CanActivateFn = (route, state) => {
     }
     if (status !== 'active') return router.createUrlTree(['/acceso'], { queryParams });
     if (space === 'customer') return true;
+    if (space === 'management' && route.queryParamMap.get('alta') === '1' && !business.length && !professional.length) return true;
 
     const memberships = space === 'agenda' ? session.agendaMemberships() : session.managementMemberships();
     const authorized = business.length <= 1 && professional.length <= 1 && memberships.some(membership =>
@@ -41,14 +42,14 @@ export const productRoutes: Routes = [
     data: { heading: 'Mis citas', space: 'customer' },
   },
   {
-    path: 'mi-agenda', title: 'GoodLook · Mi agenda', loadComponent: pending, canActivate: [protectSpace],
+    path: 'mi-agenda', title: 'GoodLook · Mi agenda', loadComponent: () => import('./agenda/weekly-agenda-page').then(module => module.WeeklyAgendaPage), canActivate: [protectSpace],
     runGuardsAndResolvers: 'paramsOrQueryParamsChange', data: { heading: 'Mi agenda', space: 'agenda' },
   },
   {
-    path: 'gestion', title: 'GoodLook · Gestión', loadComponent: pending, canActivate: [protectSpace],
+    path: 'gestion', title: 'GoodLook · Gestión', loadComponent: () => import('./management/management-page').then(module => module.ManagementPage), canActivate: [protectSpace],
     runGuardsAndResolvers: 'paramsOrQueryParamsChange', data: { heading: 'Gestión', space: 'management' },
   },
-  { path: 'invitacion', title: 'GoodLook · Invitación', loadComponent: pending, data: { heading: 'Invitación' } },
+  { path: 'invitacion', title: 'GoodLook · Invitación', loadComponent: () => import('./management/invitation-page').then(module => module.InvitationPage) },
   {
     path: 'sesion-no-disponible', title: 'GoodLook · Sesión no disponible', loadComponent: notice,
     data: { heading: 'No pudimos comprobar tu sesión', message: 'Vuelve a intentarlo cuando tengas conexión.', retry: true },
