@@ -88,3 +88,11 @@
 - [ ] Ejecutar las pruebas del backend y migrador, las suites de integración MySQL/MariaDB y las pruebas de piloto afectadas; registrar conteos, fallos y pruebas no ejecutadas.
 - [ ] Actualizar estado vigente y plan del siguiente bloque; señalar la deuda documental histórica sin borrar su contexto. Hacer commit y push de la rama de implementación si el estado lo permite.
 - [ ] Mantener los planes detallados de bloques 2–5 separados, con interfaces y criterios verificados cuando corresponda; no tratarlos como completados por figurar en la tabla.
+
+## Resultado del bloque inicial (19-11-2026)
+
+Las cinco tareas se han ejecutado e integrado en la rama de migración. La skill del integrador se verificó con repositorios sintéticos. Las guardas y la semilla pasaron en MySQL 8.4 y MariaDB 10.11. Se comprobó el recorrido en Chrome Headless y la limpieza en una consola Windows. La automatización de navegador fue temporal.
+
+El diseño del lanzador cambió durante la revisión. PowerShell delega en un proceso Node que crea recursos mediante Docker Engine, conserva sus IDs y concede acceso a la migración y a la semilla dentro del propio proceso. Compose aporta la configuración. La limpieza usa únicamente los IDs devueltos por Docker. En modo interactivo se puede cerrar con Enter y se verificó también Ctrl+C en una consola PTY. Las instrucciones están en FrontEndGoodLook/PILOTO.md.
+
+El protocolo de reservas y los demás bloques conservan sus dependencias y requieren sus propios planes. Los commits de esta tanda se conservan localmente, ya que el push de la rama de migración desencadena una compilación en Vercel.
