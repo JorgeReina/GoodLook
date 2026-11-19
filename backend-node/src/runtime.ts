@@ -1,6 +1,8 @@
 import { createPool } from 'mysql2/promise';
 import { createApp } from './app.js';
 import { MysqlMembershipStore } from './product/membership-store.js';
+import { ManagementService } from './product/management-service.js';
+import { MysqlManagementStore } from './product/management-store.js';
 import { MysqlAuthStore } from './auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from './auth/rate-limit.js';
 import { loadConfig } from './config.js';
@@ -24,6 +26,7 @@ const availabilityLimiter = new AvailabilityRateLimiter(new MysqlAvailabilityRat
 return createApp({
   publicCatalog: publicCatalogRoutes(pool),
   memberships: new MysqlMembershipStore(pool),
+  management: new ManagementService(new MysqlManagementStore(pool, env.AUTH_LIMIT_SECRET ?? '')),
   authLimiter,
   availabilityLimiter,
   store: new MysqlAuthStore(pool),
