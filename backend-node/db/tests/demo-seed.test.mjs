@@ -73,7 +73,7 @@ test('rolls back if an insert fails partway through', async t => {
   mockDocker(t);
   const connection = simulatedConnection({ failInsert: true });
   await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /fixture insert failed/);
-  assert.deepEqual(connection.operations, ['begin', 'businesses', 'professionals', 'rollback']);
+  assert.deepEqual(connection.operations, ['begin', 'users', 'businesses', 'memberships', 'professionals', 'rollback']);
 });
 
 test('a caller cannot adopt a pre-existing isolated Compose demo using all matching metadata', async () => {

@@ -18,10 +18,20 @@ function fixtureId(number) {
 const business = fixtureId(1);
 const professionals = [fixtureId(2), fixtureId(3)];
 const services = [fixtureId(4), fixtureId(5)];
+const professionalUsers = [fixtureId(6), fixtureId(7)];
+const professionalNames = ['Profesional Demo A', 'Profesional Demo B'];
 
 // Only these primary keys and values belong to the seed. Other rows, including
 // later appointments and catalog entries, do not participate in equality checks.
 const fixtures = [
+  {
+    table: 'users',
+    columns: ['id', 'email', 'password_hash', 'display_name'],
+    keyLength: 1,
+    rows: professionalUsers.map((user, index) => [
+      user, 'demo-pro-' + (index + 1) + '@example.test', 'disabled', professionalNames[index],
+    ]),
+  },
   {
     table: 'businesses',
     columns: ['id', 'name', 'timezone', 'is_public'],
@@ -29,13 +39,18 @@ const fixtures = [
     rows: [[business, 'DEMO LOCAL', 'Europe/Madrid', 1]],
   },
   {
+    table: 'memberships',
+    columns: ['business_id', 'user_id', 'role', 'status'],
+    keyLength: 2,
+    rows: professionalUsers.map(user => [business, user, 'professional', 'active']),
+  },
+  {
     table: 'professionals',
     columns: ['id', 'business_id', 'user_id', 'display_name', 'active'],
     keyLength: 1,
-    rows: [
-      [professionals[0], business, null, 'Profesional Demo A', 1],
-      [professionals[1], business, null, 'Profesional Demo B', 1],
-    ],
+    rows: professionals.map((professional, index) => [
+      professional, business, professionalUsers[index], professionalNames[index], 1,
+    ]),
   },
   {
     table: 'services',
