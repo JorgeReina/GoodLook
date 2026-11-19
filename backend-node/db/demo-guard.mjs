@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyMigrations, loadMigrations, migrationDialect, verifyServerDialect } from './migrate-lib.mjs';
+import { applyMigrations, loadMigrations, verifyServerDialect } from './migrate-lib.mjs';
+import { requireDemoOwnership } from './demo-runtime.mjs';
 
 const target = {
   host: '127.0.0.1',
@@ -19,11 +19,10 @@ export function validateDemoTarget({ containerId, hostname, database, host, port
   }
 }
 
-async function migrateDemo(containerId, dialectArgument) {
-  validateDemoTarget({ ...target, containerId, hostname: containerId?.slice(0, 12) });
-  const dialect = migrationDialect({ GOODLOOK_MIGRATION_DIALECT: dialectArgument });
-  const { createConnection } = await import('mysql2/promise');
-  const connection = await createConnection({
+export async function migrateDemo(capability) {
+  const { containerId, dialect } = requireDemoOwnership(capability);
+  const { default: mysql } = await import('mysql2/promise');
+  const connection = await mysql.createConnection({
     ...target,
     user: 'goodlook_test',
     password: 'local_test_only_password',
@@ -47,14 +46,5 @@ async function migrateDemo(containerId, dialectArgument) {
     await applyMigrations(connection, migrations, lock);
   } finally {
     await connection.end();
-  }
-}
-
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    await migrateDemo(process.argv[2], process.argv[3]);
-  } catch {
-    console.error('Demo local: migration or database identity check failed.');
-    process.exitCode = 1;
   }
 }

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { validateDemoTarget } from '../demo-guard.mjs';
+import mysql from 'mysql2/promise';
+import { mockDocker, networkId } from './demo-containers.fixture.mjs';
+import { migrateDemo, validateDemoTarget } from '../demo-guard.mjs';
+import { requireDemoOwnership, withNewDemo } from '../demo-runtime.mjs';
 
 const target = {
   containerId: '0123456789abcdef'.repeat(4),
@@ -29,3 +32,46 @@ for (const [field, value] of [
     assert.throws(() => validateDemoTarget({ ...target, [field]: value }), /demo local/i);
   });
 }
+
+test('migration rejects matching metadata when the process did not create the container', async t => {
+  const connect = t.mock.method(mysql, 'createConnection', async () => {
+    throw new Error('migration attempted to open the database');
+  });
+  await assert.rejects(migrateDemo({ ...target, context: 'desktop-linux', project: 'goodlook-demo-' + 'f'.repeat(32) }), /container ownership/);
+  assert.equal(connect.mock.callCount(), 0);
+});
+
+for (const [label, simulation, reason] of [
+  ['another Compose project', { change: container => { container.Config.Labels['com.docker.compose.project'] = 'foreign'; } }, /container identity/],
+  ['remote Docker endpoint', { endpoint: 'tcp://192.0.2.10:2376' }, /local Docker socket/],
+  ['persistent storage mount', { change: container => { container.Mounts = [{ Type: 'volume', Destination: '/var/lib/mysql' }]; } }, /container identity/],
+  ['nonloopback published port', { change: container => { container.NetworkSettings.Ports['3306/tcp'][0].HostIp = '0.0.0.0'; } }, /publish the expected loopback/],
+]) {
+  test('rejects ' + label + ' before granting access to the database', async t => {
+    mockDocker(t, simulation);
+    const work = t.mock.fn();
+    await assert.rejects(withNewDemo('mysql', work), reason);
+    assert.equal(work.mock.callCount(), 0);
+  });
+}
+
+test('a pre-existing generated project is neither adopted nor cleaned up', async t => {
+  const operations = mockDocker(t, { preexisting: true });
+  const work = t.mock.fn();
+  await assert.rejects(withNewDemo('mysql', work), /container name already exists/);
+  assert.equal(work.mock.callCount(), 0);
+  assert.deepEqual(operations.map(([action]) => action), ['network create', 'create', 'network rm']);
+  assert.deepEqual(operations.at(-1), ['network rm', networkId]);
+});
+
+test('the capability expires before cleanup of the project created by this process', async t => {
+  const operations = mockDocker(t);
+  let capability;
+  await assert.rejects(withNewDemo('mysql', async owner => {
+    capability = owner;
+    assert.equal(requireDemoOwnership(owner).containerId, target.containerId);
+    throw new Error('operation failed');
+  }), /operation failed/);
+  assert.throws(() => requireDemoOwnership(capability), /container ownership/);
+  assert.deepEqual(operations.slice(2), [['rm', target.containerId], ['network rm', networkId]]);
+});
