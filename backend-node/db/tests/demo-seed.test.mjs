@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { checksum, loadMigrations } from '../migrate-lib.mjs';
 import { seedDemo } from '../demo-seed.mjs';
+import { withNewDemo } from '../demo-runtime.mjs';
 
-import { containerId, demo, mockDocker } from './demo-containers.fixture.mjs';
+import { containerId, mockDocker } from './demo-containers.fixture.mjs';
 const migrations = await loadMigrations(fileURLToPath(new URL('../migrations/', import.meta.url)));
 const applied = migrations.map(({ version, sql }) => ({ version, checksum: checksum(sql), state: 'applied' }));
 
@@ -37,14 +38,14 @@ function simulatedConnection({ history = applied, hostname = containerId.slice(0
 test('rejects an unexpected loopback port before writing', async t => {
   mockDocker(t);
   const connection = simulatedConnection({ port: 13317 });
-  await assert.rejects(seedDemo(connection, containerId, demo), /unexpected database target/);
+  await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /unexpected database target/);
   assert.deepEqual(connection.operations, []);
 });
 
 test('rejects a foreign database identity before writing', async t => {
   mockDocker(t);
   const connection = simulatedConnection({ hostname: 'other' });
-  await assert.rejects(seedDemo(connection, containerId, demo), /unexpected database target/);
+  await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /unexpected database target/);
   assert.deepEqual(connection.operations, []);
 });
 
@@ -56,7 +57,7 @@ for (const [label, history] of [
   test('rejects ' + label + ' migrations before writing', async t => {
     mockDocker(t);
     const connection = simulatedConnection({ history });
-    await assert.rejects(seedDemo(connection, containerId, demo), /migration history/i);
+    await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /migration history/i);
     assert.deepEqual(connection.operations, []);
   });
 }
@@ -64,26 +65,22 @@ for (const [label, history] of [
 test('detects a reserved UUID collision before any insert', async t => {
   mockDocker(t);
   const connection = simulatedConnection({ businessRows: [{ name: 'Foreign business' }] });
-  await assert.rejects(seedDemo(connection, containerId, demo), /conflict/i);
+  await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /conflict/i);
   assert.deepEqual(connection.operations, ['begin', 'rollback']);
 });
 
 test('rolls back if an insert fails partway through', async t => {
   mockDocker(t);
   const connection = simulatedConnection({ failInsert: true });
-  await assert.rejects(seedDemo(connection, containerId, demo), /fixture insert failed/);
+  await assert.rejects(withNewDemo('mysql', capability => seedDemo(connection, capability)), /fixture insert failed/);
   assert.deepEqual(connection.operations, ['begin', 'businesses', 'professionals', 'rollback']);
 });
 
-test('rejects a matching SQL target owned by another Compose project before any transaction', async t => {
-  mockDocker(t, { change: container => { container.Config.Labels['com.docker.compose.project'] = 'foreign'; } });
+test('a caller cannot adopt a pre-existing isolated Compose demo using all matching metadata', async () => {
   const connection = simulatedConnection();
-  await assert.rejects(seedDemo(connection, containerId, demo), /container ownership/);
-  assert.deepEqual(connection.operations, []);
-});
-
-test('a container ID alone cannot authorize the seed', async () => {
-  const connection = simulatedConnection();
-  await assert.rejects(seedDemo(connection, containerId), /container ownership/);
+  const project = 'goodlook-demo-' + 'f'.repeat(32);
+  // Metadata no longer serves as a capability, even when it describes a valid demo.
+  await assert.rejects(seedDemo(connection, containerId, { project, context: 'desktop-linux' }), /container ownership/);
+  await assert.rejects(seedDemo(connection, { containerId, project, context: 'desktop-linux' }), /container ownership/);
   assert.deepEqual(connection.operations, []);
 });

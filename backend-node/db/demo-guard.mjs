@@ -1,8 +1,7 @@
-import childProcess from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { applyMigrations, loadMigrations, migrationDialect, verifyServerDialect } from './migrate-lib.mjs';
+import { applyMigrations, loadMigrations, verifyServerDialect } from './migrate-lib.mjs';
+import { requireDemoOwnership } from './demo-runtime.mjs';
 
 const target = {
   host: '127.0.0.1',
@@ -20,66 +19,8 @@ export function validateDemoTarget({ containerId, hostname, database, host, port
   }
 }
 
-const localEndpoints = new Set([
-  'npipe:////./pipe/dockerDesktopLinuxEngine',
-  'npipe:////./pipe/docker_engine',
-  'unix:///var/run/docker.sock',
-]);
-const imageDialects = new Map([['mysql:8.4', 'mysql'], ['mariadb:10.11', 'mariadb']]);
-
-function hasLoopbackBinding(ports) {
-  const bindings = ports?.['3306/tcp'];
-  return ports && Object.keys(ports).length === 1 && Array.isArray(bindings) &&
-    bindings.length === 1 && bindings[0].HostIp === target.host && bindings[0].HostPort === String(target.port);
-}
-
-export function verifyDemoContainer(containerId, { context, project } = {}) {
-  const ownershipError = 'Demo local: container ownership could not be verified.';
-  if (typeof containerId !== 'string' || containerId.length !== 64 || !/^[a-f0-9]+$/.test(containerId) ||
-      typeof context !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(context) ||
-      typeof project !== 'string' || project.length !== 46 || !/^goodlook-demo-[a-f0-9]{32}$/.test(project)) {
-    throw new Error(ownershipError);
-  }
-  const docker = (...args) => childProcess.execFileSync('docker', args, {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-    timeout: 10_000,
-    windowsHide: true,
-  }).trim();
-
-  let inspections;
-  try {
-    const endpoint = docker('context', 'inspect', '--format', '{{.Endpoints.docker.Host}}', context);
-    if (!localEndpoints.has(endpoint) || docker('--context', context, 'info', '--format', '{{.OSType}}') !== 'linux') {
-      throw new Error(ownershipError);
-    }
-    inspections = JSON.parse(docker('--context', context, 'inspect', '--type', 'container', containerId));
-  } catch {
-    throw new Error(ownershipError);
-  }
-
-  const container = Array.isArray(inspections) && inspections.length === 1 ? inspections[0] : undefined;
-  const config = container?.Config;
-  const host = container?.HostConfig;
-  const dialect = imageDialects.get(config?.Image);
-  if (container?.Id !== containerId || container.Name !== '/' + project + '-mysql-1' ||
-      config?.Hostname !== containerId.slice(0, 12) || config.Labels?.['com.docker.compose.project'] !== project ||
-      config.Labels?.['com.docker.compose.service'] !== 'mysql' || !dialect ||
-      container.State?.Running !== true || container.State.Health?.Status !== 'healthy' ||
-      !host || host.Privileged || host.Binds?.length || host.VolumesFrom?.length ||
-      Object.keys(host.Tmpfs ?? {}).length !== 1 || !Object.hasOwn(host.Tmpfs, '/var/lib/mysql') ||
-      !Array.isArray(container.Mounts) ||
-      container.Mounts.some(mount => mount.Type !== 'tmpfs' || mount.Destination !== '/var/lib/mysql') ||
-      !hasLoopbackBinding(host.PortBindings) || !hasLoopbackBinding(container.NetworkSettings?.Ports)) {
-    throw new Error(ownershipError);
-  }
-  return dialect;
-}
-
-export async function migrateDemo(containerId, dialectArgument, demo) {
-  const containerDialect = verifyDemoContainer(containerId, demo);
-  const dialect = migrationDialect({ GOODLOOK_MIGRATION_DIALECT: dialectArgument });
-  if (dialect !== containerDialect) throw new Error('Demo local: unexpected container dialect.');
+export async function migrateDemo(capability) {
+  const { containerId, dialect } = requireDemoOwnership(capability);
   const { default: mysql } = await import('mysql2/promise');
   const connection = await mysql.createConnection({
     ...target,
@@ -105,14 +46,5 @@ export async function migrateDemo(containerId, dialectArgument, demo) {
     await applyMigrations(connection, migrations, lock);
   } finally {
     await connection.end();
-  }
-}
-
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    await migrateDemo(process.argv[2], process.argv[3], { context: process.argv[4], project: process.argv[5] });
-  } catch {
-    console.error('Demo local: migration or database identity check failed.');
-    process.exitCode = 1;
   }
 }

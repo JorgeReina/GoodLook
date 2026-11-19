@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConnection } from 'mysql2/promise';
-import { validateDemoTarget, verifyDemoContainer } from './demo-guard.mjs';
+import { validateDemoTarget } from './demo-guard.mjs';
+import { requireDemoOwnership } from './demo-runtime.mjs';
 import { checksum, loadMigrations } from './migrate-lib.mjs';
 
 const target = {
@@ -100,12 +100,8 @@ async function countMatchingRows(connection, { table, columns, keyLength, rows }
   return existing.length;
 }
 
-export async function seedDemo(connection, expectedContainerId, demo) {
-  const dialect = verifyDemoContainer(expectedContainerId, demo);
-  await seedVerifiedDemo(connection, expectedContainerId, dialect);
-}
-
-async function seedVerifiedDemo(connection, expectedContainerId, dialect) {
+export async function seedDemo(connection, capability) {
+  const { containerId: expectedContainerId, dialect } = requireDemoOwnership(capability);
   const { host, port, socketPath, stream } = connection.config;
   if (socketPath || stream) throw new Error('Demo local: unexpected database target.');
   const expected = { containerId: expectedContainerId, host, port };
@@ -144,24 +140,13 @@ async function seedVerifiedDemo(connection, expectedContainerId, dialect) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try {
-    const containerId = process.argv[2];
-    const dialect = verifyDemoContainer(containerId, { context: process.argv[3], project: process.argv[4] });
-    const connection = await createConnection({
-      ...target,
-      user: 'goodlook_test',
-      password: 'local_test_only_password',
-      timezone: 'Z',
-      connectTimeout: 5000,
-    });
-    try {
-      await seedVerifiedDemo(connection, containerId, dialect);
-    } finally {
-      await connection.end();
-    }
-  } catch {
-    console.error('Demo local: seed or database identity check failed.');
-    process.exitCode = 1;
-  }
+export async function openDemoConnection(capability) {
+  requireDemoOwnership(capability);
+  return createConnection({
+    ...target,
+    user: 'goodlook_test',
+    password: 'local_test_only_password',
+    timezone: 'Z',
+    connectTimeout: 5000,
+  });
 }
