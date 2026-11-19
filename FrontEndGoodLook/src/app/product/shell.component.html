@@ -1,0 +1,38 @@
+<button type="button" class="gl-skip" (click)="skipToContent()">Saltar al contenido</button>
+<header class="gl-header">
+  <div class="gl-header-inner">
+    <a class="gl-brand" routerLink="/" aria-label="GoodLook, inicio">GoodLook</a>
+    <nav class="gl-navigation" aria-label="Navegación principal">
+      <a routerLink="/" routerLinkActive="gl-current" [routerLinkActiveOptions]="exactLink" ariaCurrentWhenActive="page">Catálogo</a>
+      @if (session.user()) {
+        <a routerLink="/mis-citas" routerLinkActive="gl-current" ariaCurrentWhenActive="page">Mis citas</a>
+        @if (session.agendaMemberships().length) {
+          <a routerLink="/mi-agenda" routerLinkActive="gl-current" ariaCurrentWhenActive="page">Mi agenda</a>
+        }
+        @if (session.managementMemberships().length) {
+          <a routerLink="/gestion" routerLinkActive="gl-current" ariaCurrentWhenActive="page">Gestión</a>
+        }
+        <button matButton="outlined" type="button" [disabled]="endingSession()" (click)="logout()">
+          {{ endingSession() ? 'Cerrando sesión…' : 'Cerrar sesión' }}
+        </button>
+      } @else if (session.status() !== 'checking') {
+        <a matButton="outlined" routerLink="/acceso" routerLinkActive="gl-current" ariaCurrentWhenActive="page">Iniciar sesión</a>
+      }
+    </nav>
+  </div>
+</header>
+
+<main id="contenido" #main tabindex="-1" class="gl-main">
+  @if (!online()) {
+    <gl-status>Estás sin conexión. Algunas funciones no están disponibles.</gl-status>
+  } @else if (session.status() === 'unavailable') {
+    <div class="gl-session-notice">
+      <gl-status kind="error">No pudimos comprobar tu sesión.</gl-status>
+      <button matButton="outlined" type="button" (click)="retrySession()">Comprobar sesión</button>
+    </div>
+  }
+  @if (logoutError() && session.user()) {
+    <gl-status kind="error">No se pudo cerrar la sesión. Vuelve a intentarlo.</gl-status>
+  }
+  <router-outlet />
+</main>

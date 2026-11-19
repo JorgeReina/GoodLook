@@ -67,3 +67,11 @@ El prototipo aplicó la paleta mediante `mat.theme-overrides` y estilos comparti
 Para catálogo, usar fotografías realistas propias o con derechos verificados y asociar a un negocio solo las que lo representen. Identificar como ilustrativas las imágenes que muestren un sector o servicio. Registrar autor, origen y licencia de cada fotografía y fuente externa antes de incorporarlas. El ensayo se hizo con tipografía local y sin fotos. Las vistas privadas priorizan servicio, hora, precio y estado.
 
 La selección del kit aporta una prueba de interfaz con datos fijos. Queda por verificar en pantallas de producto el manejo de foco al cambiar de ruta, los estados de carga, disponibilidad vacía y error, la agenda con semanas reales, los lectores de pantalla, el tacto en dispositivos, Safari y la instalación PWA. Las medidas de peso sirven como referencia del prototipo.
+
+## Carcasa de producto
+
+Desde `FrontEndGoodLook`, con Node 24.22.3 y las dependencias del lockfile, ejecutar `npx ng serve --configuration=product --host localhost`. El target reutiliza el proxy del piloto hacia `127.0.0.1:3000`. Para validar el acceso, la API debe usar `APP_ORIGIN=http://localhost:4200` y una base local con datos sintéticos.
+
+Para una compilación montada bajo `/producto/`, ejecutar `npm run build -- --configuration=product --base-href /producto/ --output-path dist/front-end-good-look/producto`. El servidor debe entregar el índice de producto al abrir directamente una ruta de esa aplicación y mantener `/api` en el origen. Las rutas de Angular respetan la base configurada. La aplicación conserva la sesión en la cookie HttpOnly y mantiene las pertenencias solo en memoria. La API decide los permisos de cada recurso.
+
+El catálogo preliminar lista los negocios publicados que devuelve `GET /api/businesses`. La ficha, la reserva, las citas propias, la agenda, la gestión y la invitación muestran páginas de alcance provisional. Los recorridos de esas pantallas y la instalación PWA se desarrollan en las tareas 8 a 11.
