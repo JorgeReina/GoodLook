@@ -25,7 +25,7 @@ En la reserva Material, tres radios nativos agrupan las horas bajo una etiqueta.
 | Perfil | Comprobaciones en Material |
 | --- | --- |
 | Escritorio, Chrome Headless **157.0.8103.79**, 1280 × 900 CSS px | La reserva se completó con flechas, Tab y Enter. El botón se habilitó al elegir hora y el mensaje de estado confirmó la simulación. La agenda abrió en tabla y se pudo pasar a lista con Espacio. |
-| Móvil emulado, mismo Chrome, 360 × 800 CSS px | El diálogo y las acciones quedaron dentro del área visible. La agenda abrió en lista. Al elegir la cuadrícula, el desplazamiento horizontal quedó dentro de su contenedor y se pudo accionar con teclado. |
+| Ventana estrecha, mismo Chrome, 360 × 800 CSS px | El diálogo y las acciones quedaron dentro del área visible. La agenda abrió en lista. Al elegir la cuadrícula, el desplazamiento horizontal quedó dentro de su contenedor y se pudo accionar con teclado. La prueba usó teclado y apuntador. |
 | Zoom real al 200 %, Chromium Headless **156**, ventana de 1280 × 900 | Una extensión local aplicó `chrome.tabs.setZoom(tabId, 2)` y el navegador informó 640 × 450 CSS px y DPR 2. Se pudo confirmar y alternar entre ambas vistas. El documento conservó su ancho en los tres perfiles. |
 
 En los tres perfiles el foco visible se verificó en Revisar cita, el diálogo enfocó Volver al abrir, Tab y Mayús+Tab circularon entre las dos acciones, y Escape, Volver y Confirmar devolvieron el foco al botón de origen. La prueba automatizada esperó la actualización del DOM tras la selección antes de enviar Tab. Se revisaron visualmente el diálogo a 360 px, la cuadrícula de escritorio y la lista al 200 %.
@@ -42,8 +42,8 @@ Bytes exactos de los archivos JS y CSS emitidos, con gzip nivel 9 por archivo me
 | --- | ---: | ---: |
 | Piloto, carga inicial con `npm run build -- --configuration=pilot` | 573 502 | 139 647 |
 | Material, carga inicial de la carcasa | 247 567 | 75 862 |
-| Material, abrir reserva desde la carcasa | 144 654 | 34 440 |
-| Material, abrir agenda desde la carcasa | 68 125 | 15 541 |
+| Material, entrada directa a reserva menos recursos de la carcasa | 144 654 | 34 440 |
+| Material, entrada directa a agenda menos recursos de la carcasa | 68 125 | 15 541 |
 | Material, abrir agenda tras reserva | 2 590 | 1 149 |
 | PrimeNG, carga inicial y diferida | Sin medir | Sin medir |
 
