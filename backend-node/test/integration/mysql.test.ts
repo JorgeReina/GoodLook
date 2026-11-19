@@ -8,7 +8,9 @@ import { createApp } from '../../src/app.js';
 import { MysqlAuthStore } from '../../src/auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from '../../src/auth/rate-limit.js';
 import { createAppointment, listProfessionalAgenda, type AppointmentPool } from '../../src/appointments/service.js';
-import { loadMigrations, applyMigrations, verifyServerDialect, migrationDialect } from '../../db/migrate-lib.mjs';
+import { loadMigrations, verifyServerDialect, migrationDialect } from '../../db/migrate-lib.mjs';
+
+import { verifyProductSchemaUpgrade } from './product-schema.js';
 
 // Hardcoded loopback-only ephemeral database; hostname is checked against the
 // container created by the wrapper before any schema or fixture is written.
@@ -19,22 +21,22 @@ const expectedContainer = process.env.GOODLOOK_TEST_CONTAINER_ID!;
 const pool = createPool({ host:'127.0.0.1', port:33317, user:'goodlook_test', password:'local_test_only_password', database:'goodlook_disposable_test', timezone:'Z', connectionLimit:5, multipleStatements:true });
 type R = RowDataPacket & Record<string, unknown>;
 
-test('isolated database: migrations, identity, tenant checks and racing bookings', async () => {
+test('isolated database: migrations, identity, tenant checks and racing bookings', async t => {
   let server: ReturnType<ReturnType<typeof createApp>['listen']> | undefined;
   try {
-    const [identity] = await pool.query<R[]>('SELECT @@hostname AS host, DATABASE() AS db');
+    const [identity] = await pool.query<R[]>('SELECT @@hostname AS host, DATABASE() AS db, VERSION() AS version');
     assert.equal(identity[0].host, expectedContainer.slice(0,12), 'unexpected server; refusing to write');
     assert.equal(identity[0].db, 'goodlook_disposable_test');
     const [existing] = await pool.query<R[]>("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()");
     assert.equal(existing.length, 0, 'database must be empty; refusing to write');
     const dialect = migrationDialect(process.env);
+    t.diagnostic(String(identity[0].version));
     const conn = await pool.getConnection();
     try {
       await verifyServerDialect(conn, dialect);
       const dir = dialect === 'mariadb' ? 'migrations-mariadb' : 'migrations';
       const migrations = await loadMigrations(fileURLToPath(new URL(`../../db/${dir}/`, import.meta.url)));
-      await applyMigrations(conn, migrations, 'goodlook:integration');
-      await applyMigrations(conn, migrations, 'goodlook:integration');
+      await verifyProductSchemaUpgrade(conn, migrations);
     } finally { conn.release(); }
 
     const realLimiter = new AuthRateLimiter(new MysqlRateLimitStore(pool), 'b'.repeat(64));
@@ -68,11 +70,13 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     assert.equal((await post('/api/auth/logout',{},cookie)).status,204);
     assert.equal((await fetch(base+'/api/auth/me',{headers:{cookie}})).status,401);
 
-    const business=randomUUID(), otherBusiness=randomUUID(), professional=randomUUID(), service=randomUUID(), otherService=randomUUID(), owner=randomUUID(), attacker=randomUUID();
+    const business=randomUUID(), otherBusiness=randomUUID(), professional=randomUUID(), staffUser=randomUUID(), service=randomUUID(), otherService=randomUUID(), owner=randomUUID(), attacker=randomUUID();
     await pool.execute('INSERT INTO users(id,email,password_hash,display_name) VALUES (?,?,?,?),(?,?,?,?)',[owner,'owner@example.test','dummy','Owner',attacker,'attacker@example.test','dummy','Other']);
     await pool.execute('INSERT INTO businesses(id,name,timezone) VALUES (?,?,?),(?,?,?)',[business,'One','UTC',otherBusiness,'Two','UTC']);
     await pool.execute("INSERT INTO memberships(business_id,user_id,role,status) VALUES (?,?,'owner','active'),(?,?,'owner','active')",[business,owner,otherBusiness,attacker]);
-    await pool.execute('INSERT INTO professionals(id,business_id,display_name) VALUES (?,?,?)',[professional,business,'Pro']);
+    await pool.execute('INSERT INTO users(id,email,password_hash,display_name) VALUES (?,?,?,?)',[staffUser,'staff@example.test','disabled','Pro']);
+    await pool.execute("INSERT INTO memberships(business_id,user_id,role) VALUES (?,?,'professional')",[business,staffUser]);
+    await pool.execute('INSERT INTO professionals(id,business_id,user_id,display_name) VALUES (?,?,?,?)',[professional,business,staffUser,'Pro']);
     await pool.execute('INSERT INTO services(id,business_id,name,duration_minutes,price_cents,currency) VALUES (?,?,?,30,1500,?),(?,?,?,30,1500,?)',[service,business,'Cut','EUR',otherService,otherBusiness,'Other','EUR']);
     await assert.rejects(pool.execute('INSERT INTO professional_services(business_id,professional_id,service_id) VALUES (?,?,?)',[business,professional,otherService]));
     await pool.execute('INSERT INTO professional_services(business_id,professional_id,service_id) VALUES (?,?,?)',[business,professional,service]);
@@ -90,6 +94,7 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     assert.equal(count[0].n,1);
     const from=new Date(day.getTime()-86400000).toISOString(), to=new Date(day.getTime()+86400000).toISOString();
     assert.equal((await listProfessionalAgenda(target,{actorId:owner,businessId:business,professionalId:professional,from,to})).length,1);
+    assert.equal((await listProfessionalAgenda(target,{actorId:staffUser,businessId:business,professionalId:professional,from,to})).length,1);
     await assert.rejects(listProfessionalAgenda(target,{actorId:attacker,businessId:business,professionalId:professional,from,to}), /Forbidden/);
   } finally {
     if (server) await new Promise<void>((resolve,reject)=>server!.close(e=>e?reject(e):resolve()));
