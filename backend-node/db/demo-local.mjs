@@ -1,9 +1,26 @@
 import { resolve } from 'node:path';
-import { setInterval } from 'node:timers/promises';
+import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { withNewDemo } from './demo-runtime.mjs';
 import { migrateDemo } from './demo-guard.mjs';
 import { seedDemo, openDemoConnection } from './demo-seed.mjs';
+
+async function waitForDemoStop(signal) {
+  if (signal.aborted) return;
+  const terminal = createInterface({ input: process.stdin, output: process.stdout });
+  const close = () => terminal.close();
+  signal.addEventListener('abort', close, { once: true });
+  try {
+    await new Promise(resolve => {
+      terminal.once('close', resolve);
+      terminal.once('line', close);
+      terminal.once('SIGINT', close);
+      if (signal.aborted) close();
+    });
+  } finally {
+    signal.removeEventListener('abort', close);
+  }
+}
 
 async function run(dialect, mode, signal) {
   if (!['test', 'interactive'].includes(mode)) throw new Error('Demo local: invalid mode.');
@@ -21,10 +38,8 @@ async function run(dialect, mode, signal) {
         await connection.end();
       }
       console.log('Demo local: isolated ' + dialect + ' database ready at 127.0.0.1:33317 with sample data.');
-      console.log('Press Ctrl+C to remove the local demo resources.');
-      for await (const _tick of setInterval(1000, undefined, { signal })) {
-        // Keep the demo alive until interrupted.
-      }
+      console.log('Press Enter to stop and remove the local demo resources.');
+      await waitForDemoStop(signal);
     }
   }, { signal });
 }
