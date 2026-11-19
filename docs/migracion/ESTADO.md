@@ -110,3 +110,11 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 
 - Se retiran el backend anterior (`BackEndGoodLook`) y su suite de regresión (`LegacySecurityTests`). Las menciones de .NET en los apartados anteriores registran el estado histórico.
 - El piloto de Vercel usa Angular y la API Node. El frontend anterior conserva su integración histórica con el servicio legado alojado fuera de este repositorio. La retirada de código no cambia ese servicio, su base de datos ni el historial de Git.
+
+## Inicio de la primera entrega de producto (19-11-2026)
+
+- El [diseño aprobado](../superpowers/specs/2026-11-19-goodlook-producto-ux-design.md) y el [plan por tareas](../superpowers/plans/2026-11-19-goodlook-primera-entrega.md) están integrados en la rama local de migración.
+- Tarea 1. La migración 005 añade los campos de ficha, la marca de primera publicación, la revocación de invitación y el índice de perfiles por cuenta. MySQL 8.4.13 y MariaDB 10.11.19 pasaron la actualización desde 004 con una cita histórica, la reaplicación, la carrera de reservas existente y la semilla desde una base vacía. La vinculación desde la API de invitaciones se aborda en la tarea 5. La tarea 4 debe contemplar negocios que el piloto publique con first_published_at nulo después de 005.
+- Tarea 2. La API expone `GET /api/me/memberships` con pertenencias activas de la sesión y cabecera `Cache-Control: no-store`. Pasaron 92 pruebas de API, 33 de base de datos, comprobación de tipos y compilación con Node 24.22.3. Se comprobó la ruta HTTP con sesión real, dos pertenencias activas y una inactiva en ambos motores Docker. Ese guion fue temporal.
+- Tarea 6. Se elige Angular Material/CDK a partir de una prueba local de reserva, diálogo y agenda con lista, a 360 px, en escritorio y con zoom al 200 %. PrimeNG 22 se evaluó con documentación y ejemplos públicos. La compilación y las métricas de peso de PrimeNG quedaron pendientes por falta de una clave PrimeUI. [Decisión y resultados de interfaz](../../FrontEndGoodLook/docs/decision-ui.md).
+- Siguientes tareas del plan. Protocolo de reservas y disponibilidad (3), y carcasa Angular con rutas y sesión (7). Las pruebas se ejecutaron en recursos Docker locales, retirados después de las comprobaciones. Esta tanda se conserva localmente y no se aplicó a MonsterASP ni a Vercel.
