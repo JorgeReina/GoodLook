@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import type { AuthStore } from '../auth/store.js';
 import { sessionUser } from '../auth/routes.js';
-import { AppointmentError, createAppointment, listProfessionalAgenda } from './service.js';
+import { AppointmentError, type BookingInput, createAppointment, listProfessionalAgenda } from './service.js';
 import type { AvailabilityQuery } from './public-availability.js';
 import type { AvailabilityLimiter } from './rate-limit.js';
 
 type CreateInput = Parameters<typeof createAppointment>[1];
 type AgendaInput = Parameters<typeof listProfessionalAgenda>[1];
 export interface AppointmentHandlers {
+  book?(input:BookingInput):Promise<{replayed:boolean;appointment:unknown}>;
   create(input: CreateInput): Promise<unknown>;
   agenda(input: AgendaInput): Promise<unknown>;
   mine?(input: { actorId: string; from: string; to: string }): Promise<unknown>;
@@ -60,7 +61,7 @@ export function appointmentRoutes(store: AuthStore, allowedOrigin: string, handl
   });
   router.use((error: unknown, _req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
     if (!(error instanceof AppointmentError)) { next(error); return; }
-    const status = {invalid:400, unavailable:422, conflict:409, forbidden:403}[error.code];
+    const status = {invalid:400, unavailable:422, conflict:409, forbidden:403, offer_changed:409, slot_unavailable:409,idempotency_conflict:409}[error.code];
     res.status(status).json({error:error.code});
   });
   return router;

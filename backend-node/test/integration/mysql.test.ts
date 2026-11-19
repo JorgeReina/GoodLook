@@ -7,10 +7,12 @@ import { createPool, type RowDataPacket } from 'mysql2/promise';
 import { createApp } from '../../src/app.js';
 import { MysqlAuthStore } from '../../src/auth/mysql-store.js';
 import { AuthRateLimiter, MysqlRateLimitStore } from '../../src/auth/rate-limit.js';
-import { createAppointment, listProfessionalAgenda, type AppointmentPool } from '../../src/appointments/service.js';
+import { createAppointment, createBooking, listProfessionalAgenda } from '../../src/appointments/service.js';
+import { publicCatalogRoutes } from '../../src/catalog/public.js';
 import { loadMigrations, verifyServerDialect, migrationDialect } from '../../db/migrate-lib.mjs';
 
 import { verifyProductSchemaUpgrade } from './product-schema.js';
+import { concurrentAt, verifyBookingIntegrity } from './booking-integrity.js';
 
 // Hardcoded loopback-only ephemeral database; hostname is checked against the
 // container created by the wrapper before any schema or fixture is written.
@@ -21,7 +23,7 @@ const expectedContainer = process.env.GOODLOOK_TEST_CONTAINER_ID!;
 const pool = createPool({ host:'127.0.0.1', port:33317, user:'goodlook_test', password:'local_test_only_password', database:'goodlook_disposable_test', timezone:'Z', connectionLimit:5, multipleStatements:true });
 type R = RowDataPacket & Record<string, unknown>;
 
-test('isolated database: migrations, identity, tenant checks and racing bookings', async t => {
+test('isolated database: migrations, identity, tenant checks and racing bookings', {timeout:30_000}, async t => {
   let server: ReturnType<ReturnType<typeof createApp>['listen']> | undefined;
   try {
     const [identity] = await pool.query<R[]>('SELECT @@hostname AS host, DATABASE() AS db, VERSION() AS version');
@@ -54,7 +56,15 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
 
     const store = new MysqlAuthStore(pool);
     const origin = 'https://app.example.test';
-    server = createApp({store, allowedOrigin:origin, authLimiter:new AuthRateLimiter(new MysqlRateLimitStore(pool),'a'.repeat(64))}).listen(0, '127.0.0.1');
+    server = createApp({
+      store, allowedOrigin:origin, authLimiter:new AuthRateLimiter(new MysqlRateLimitStore(pool),'a'.repeat(64)),
+      publicCatalog:publicCatalogRoutes(pool),
+      appointments:{
+        book:input=>createBooking(pool,input),
+        create:input=>createAppointment(pool,input),
+        agenda:input=>listProfessionalAgenda(pool,input),
+      },
+    }).listen(0, '127.0.0.1');
     await new Promise<void>((resolve, reject) => { server!.once('listening',resolve); server!.once('error',reject); });
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const post = (path:string, body:unknown, cookie?:string) => fetch(base + path, { method:'POST', headers:{'content-type':'application/json',origin,...(cookie?{cookie}:{})}, body:JSON.stringify(body) });
@@ -84,9 +94,9 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     const day = new Date(Date.now()+2*86400000); day.setUTCHours(12,0,0,0);
     const startAt=day.toISOString();
     const booking={actorId:registeredData.id,businessId:business,professionalId:professional,serviceId:service,startAt};
-    await assert.rejects(createAppointment(pool as unknown as AppointmentPool,booking), /unavailable/i);
+    await assert.rejects(createAppointment(pool,booking), /unavailable/i);
     await pool.execute('UPDATE businesses SET is_public=1 WHERE id=?',[business]);
-    const target=pool as unknown as AppointmentPool;
+    const target=concurrentAt(pool,'SELECT id FROM businesses');
     const outcomes=await Promise.allSettled([createAppointment(target,booking),createAppointment(target,booking)]);
     assert.equal(outcomes.filter(x=>x.status==='fulfilled').length,1);
     assert.equal(outcomes.filter(x=>x.status==='rejected').length,1);
@@ -96,6 +106,56 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
     assert.equal((await listProfessionalAgenda(target,{actorId:owner,businessId:business,professionalId:professional,from,to})).length,1);
     assert.equal((await listProfessionalAgenda(target,{actorId:staffUser,businessId:business,professionalId:professional,from,to})).length,1);
     await assert.rejects(listProfessionalAgenda(target,{actorId:attacker,businessId:business,professionalId:professional,from,to}), /Forbidden/);
+
+    await t.test('public catalog and authenticated booking HTTP contracts',async()=>{
+      const listed = await fetch(base+'/api/catalog/businesses');
+      const publicBusinesses = await listed.json() as {id:string;name:string}[];
+      assert.deepEqual(publicBusinesses.find(item=>item.id===business),{id:business,name:'One',sector:null,address:null,timezone:'UTC'});
+      assert.ok(publicBusinesses.some(item=>item.name==='Existing public business'));
+      assert.ok(publicBusinesses.every(item=>item.id!==otherBusiness));
+      const hidden = await fetch(base+`/api/catalog/businesses/${otherBusiness}/services`);
+      assert.equal(hidden.status,404);
+      assert.deepEqual(await hidden.json(),{code:'not_found'});
+      const services = await fetch(base+`/api/catalog/businesses/${business}/services`);
+      assert.deepEqual(await services.json(),[{id:service,businessId:business,name:'Cut',description:null,durationMinutes:30,priceCents:1500,currency:'EUR',active:true}]);
+      const staff = await fetch(base+`/api/catalog/businesses/${business}/professionals?serviceId=${service}`);
+      assert.deepEqual(await staff.json(),[{id:professional,displayName:'Pro',active:true,linked:true,serviceIds:[service]}]);
+
+      const loginAgain = await post('/api/auth/login',{email:'one@example.test',password:'test password only'});
+      const session = loginAgain.headers.get('set-cookie')?.split(';')[0];
+      assert.ok(session);
+      const key = randomUUID();
+      const request = {
+        ...booking, actorId:attacker,
+        startAt:new Date(day.getTime()-3600_000).toISOString(),
+        quote:{priceCents:1500,currency:'EUR',durationMinutes:30},
+      };
+      const book = (body:unknown, sessionCookie?:string,requestKey=key) => fetch(base+'/api/bookings',{
+        method:'POST', headers:{'content-type':'application/json',origin,'Idempotency-Key':requestKey,...(sessionCookie?{cookie:sessionCookie}:{})},
+        body:JSON.stringify(body),
+      });
+      const anonymous = await book(request);
+      assert.equal(anonymous.status,401);
+      assert.deepEqual(await anonymous.json(),{code:'unauthenticated'});
+      const created = await book(request,session);
+      assert.equal(created.status,201);
+      assert.equal(created.headers.get('cache-control'),'no-store');
+      const appointment = await created.json() as {customerUserId:string};
+      assert.equal(appointment.customerUserId,registeredData.id);
+      const replayed = await book({
+        ...request, businessId:business.toUpperCase(), professionalId:professional.toUpperCase(),
+        serviceId:service.toUpperCase(), notes:null,
+      },session,key.toUpperCase());
+      assert.equal(replayed.status,200);
+      assert.deepEqual(await replayed.json(),appointment);
+      const conflict = await book({...request,notes:'different'},session);
+      assert.equal(conflict.status,409);
+      assert.deepEqual(await conflict.json(),{code:'idempotency_conflict'});
+      const invalid = await book({...request,startAt:request.startAt.replace('.000Z','Z')},session);
+      assert.equal(invalid.status,400);
+      assert.deepEqual(await invalid.json(),{code:'invalid_input'});
+    });
+    await t.test('cross-location, idempotency and concurrent availability changes',()=>verifyBookingIntegrity(pool,booking,otherBusiness,otherService,staffUser));
   } finally {
     if (server) await new Promise<void>((resolve,reject)=>server!.close(e=>e?reject(e):resolve()));
     await pool.end();

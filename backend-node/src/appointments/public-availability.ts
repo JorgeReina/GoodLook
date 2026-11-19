@@ -2,7 +2,7 @@ import { AppointmentError, type AppointmentPool } from './service.js';
 
 export type AvailabilityPool = AppointmentPool;
 export interface AvailabilityQuery {businessId:string; professionalId:string; serviceId:string; from:string; to:string}
-interface Service {duration_minutes:number; timezone:string}
+interface Service {user_id:string|null; duration_minutes:number; timezone:string}
 interface Hours {weekday:number; start_seconds:number; end_seconds:number}
 interface Busy {start_at:Date|string; end_at:Date|string}
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,14 +31,25 @@ export async function publicAvailability(pool:AvailabilityPool,input:Availabilit
  const c=await pool.getConnection(); let begun=false;
  try{
   await c.beginTransaction();begun=true;
-  const services=unpack<Service>(await c.query(`SELECT s.duration_minutes,b.timezone FROM services s JOIN businesses b ON b.id=s.business_id JOIN professional_services ps ON ps.business_id=s.business_id AND ps.service_id=s.id JOIN professionals p ON p.business_id=ps.business_id AND p.id=ps.professional_id WHERE b.id=? AND b.is_public=TRUE AND p.id=? AND p.active=TRUE AND s.id=? AND s.active=TRUE`,[input.businessId,input.professionalId,input.serviceId]));
+  const services=unpack<Service>(await c.query(`SELECT s.duration_minutes,b.timezone,p.user_id
+    FROM services s JOIN businesses b ON b.id=s.business_id
+    JOIN professional_services ps ON ps.business_id=s.business_id AND ps.service_id=s.id
+    JOIN professionals p ON p.business_id=ps.business_id AND p.id=ps.professional_id
+    WHERE ps.active=TRUE AND b.id=? AND b.is_public=TRUE AND p.id=? AND p.active=TRUE AND s.id=? AND s.active=TRUE
+      AND (p.user_id IS NULL OR EXISTS (SELECT 1 FROM memberships m WHERE m.business_id=p.business_id AND m.user_id=p.user_id AND m.status='active'))`,
+    [input.businessId,input.professionalId,input.serviceId]));
   const service=services[0];
   if(!service||!Number.isSafeInteger(service.duration_minutes)||service.duration_minutes<=0)throw new AppointmentError('unavailable','Unavailable');
   let formatter:Intl.DateTimeFormat;
   try{formatter=new Intl.DateTimeFormat('en-GB',{timeZone:service.timezone,year:'numeric',month:'2-digit',day:'2-digit',weekday:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23',timeZoneName:'longOffset'});}catch{throw new AppointmentError('unavailable','Unavailable');}
   const hours=unpack<Hours>(await c.query('SELECT weekday,TIME_TO_SEC(start_time) AS start_seconds,TIME_TO_SEC(end_time) AS end_seconds FROM working_hours WHERE business_id=? AND professional_id=? LIMIT 101',[input.businessId,input.professionalId]));
   if(hours.length>100)throw new AppointmentError('unavailable','Unavailable');
-  const busyRows=unpack<Busy>(await c.query("SELECT start_at,end_at FROM appointments WHERE business_id=? AND professional_id=? AND status IN ('booked','completed','no_show') AND start_at < ? AND end_at > ? LIMIT 5001",[input.businessId,input.professionalId,sqlTime(to),sqlTime(from)]));
+  const busyRows=unpack<Busy>(await c.query(`SELECT start_at,end_at FROM professional_closures
+    WHERE business_id=? AND professional_id=? AND start_at < ? AND end_at > ?
+    UNION ALL SELECT start_at,end_at FROM appointments
+    WHERE (professional_id = ? OR professional_id IN (SELECT id FROM professionals WHERE user_id = ?))
+      AND status IN ('booked','completed','no_show') AND start_at < ? AND end_at > ? LIMIT 5001`,
+    [input.businessId,input.professionalId,sqlTime(to),sqlTime(from),input.professionalId,service.user_id,sqlTime(to),sqlTime(from)]));
   // Do not truncate occupied appointments: omitted rows could create false availability.
   if(busyRows.length>5000)throw new AppointmentError('unavailable','Unavailable');
   const busy=busyRows.map(b=>({start:dbTime(b.start_at),end:dbTime(b.end_at)})).sort((a,b)=>a.start-b.start||a.end-b.end);

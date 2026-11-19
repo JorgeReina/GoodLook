@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { lockBusiness, lockProfessionalUsers, lockProfessionalProfiles } from './booking-locks.js';
+import { createHash, randomUUID } from 'node:crypto';
 
 /** Structural subset of a mysql2/promise connection. */
 export interface SqlConnection {
@@ -6,12 +7,12 @@ export interface SqlConnection {
   commit(): Promise<void>;
   rollback(): Promise<void>;
   release(): void;
-  query(sql: string, params?: readonly unknown[]): Promise<[unknown, unknown]>;
+  query(sql: string, params?: (string | number | boolean | null)[]): Promise<[unknown, unknown]>;
 }
 export interface AppointmentPool { getConnection(): Promise<SqlConnection>; }
 
 export class AppointmentError extends Error {
-  constructor(public readonly code: 'invalid' | 'unavailable' | 'conflict' | 'forbidden', message: string) { super(message); }
+  constructor(public readonly code: 'invalid' | 'unavailable' | 'conflict' | 'forbidden' | 'offer_changed' | 'idempotency_conflict' | 'slot_unavailable', message: string, public readonly quote?: Quote) { super(message); }
 }
 
 interface CreateInput {
@@ -24,6 +25,8 @@ interface CreateInput {
   startAt: string;
   notes?: string | null;
 }
+export interface Quote {priceCents:number; currency:string; durationMinutes:number}
+export interface BookingInput extends CreateInput {requestKey:string; quote:Quote}
 interface Dependencies { now?: () => number; createId?: () => string; }
 interface AgendaInput { actorId: string; businessId: string; professionalId: string; from: string; to: string; }
 interface ServiceRow { duration_minutes: number; price_cents: number; currency: string; timezone: string; }
@@ -44,10 +47,11 @@ function rows<T>(result: [unknown, unknown]): T[] {
   if (!Array.isArray(result[0])) throw new Error('Expected database rows');
   return result[0] as T[];
 }
-async function transaction<T>(pool: AppointmentPool, action: (connection: SqlConnection) => Promise<T>): Promise<T> {
+async function transaction<T>(pool: AppointmentPool, action: (connection: SqlConnection) => Promise<T>, readCommitted=false): Promise<T> {
   const c = await pool.getConnection();
   let begun = false;
   try {
+    if(readCommitted) await c.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
     await c.beginTransaction(); begun = true;
     const result = await action(c);
     await c.commit(); begun = false;
@@ -68,19 +72,70 @@ function localParts(ms: number, timezone: string): { day: string; weekday: numbe
 
 /** Creates a booking for the authenticated user. Do not expose without authentication and rate limiting. */
 export async function createAppointment(pool: AppointmentPool, input: CreateInput, deps: Dependencies = {}) {
+  const {appointment} = await reserve(pool,input,deps);
+  return appointment;
+}
+
+export async function createBooking(pool:AppointmentPool,input:BookingInput,deps:Dependencies={}) {
+  for (const id of [input.requestKey,input.businessId,input.professionalId,input.serviceId]) requireId(id);
+  const q=input.quote;
+  if (!q || !Number.isSafeInteger(q.priceCents) || q.priceCents<0 || !Number.isSafeInteger(q.durationMinutes) || q.durationMinutes<=0 || typeof q.currency!=='string' || !/^[A-Z]{3}$/.test(q.currency)) throw new AppointmentError('invalid','Invalid quote');
+  const normalized = {
+    ...input,
+    businessId: input.businessId.toLowerCase(),
+    professionalId: input.professionalId.toLowerCase(),
+    serviceId: input.serviceId.toLowerCase(),
+    startAt: new Date(parseUtc(input.startAt)).toISOString(),
+    notes: input.notes ?? null,
+  };
+  const hash=createHash('sha256').update(JSON.stringify([
+    normalized.businessId,normalized.professionalId,normalized.serviceId,normalized.startAt,normalized.notes,
+    q.priceCents,q.currency,q.durationMinutes,
+  ])).digest('hex');
+  try {
+    return await reserve(pool,normalized,deps,{key:input.requestKey.toLowerCase(),hash,quote:q});
+  } catch(error) {
+    if(error instanceof AppointmentError && (error.code==='unavailable'||error.code==='conflict')) throw new AppointmentError('slot_unavailable','Slot unavailable');
+    throw error;
+  }
+}
+
+async function reserve(pool:AppointmentPool,input:CreateInput,deps:Dependencies,request?:{key:string;hash:string;quote:Quote}) {
   for (const id of [input.actorId,input.businessId,input.professionalId,input.serviceId]) requireId(id);
   const start = parseUtc(input.startAt);
   const now = (deps.now ?? Date.now)();
-  if (!Number.isFinite(now) || start <= now) throw new AppointmentError('invalid', 'Appointment must be in the future');
+  if (!Number.isFinite(now) || (!request && start <= now)) throw new AppointmentError('invalid', 'Appointment must be in the future');
   if (input.notes != null && (typeof input.notes !== 'string' || Array.from(input.notes).length > 500)) throw new AppointmentError('invalid', 'Invalid notes');
   const id = (deps.createId ?? randomUUID)(); requireId(id);
 
-  return transaction(pool, async c => {
-    const professional = rows<{user_id:string|null}>(await c.query('SELECT p.user_id FROM professionals p WHERE p.business_id = ? AND p.id = ? AND p.active = TRUE FOR UPDATE', [input.businessId,input.professionalId]));
-    if (!professional.length) throw new AppointmentError('unavailable','Professional unavailable');
-    const services = rows<ServiceRow>(await c.query(`SELECT s.duration_minutes, s.price_cents, s.currency, b.timezone FROM services s JOIN professional_services ps ON ps.business_id = s.business_id AND ps.service_id = s.id JOIN businesses b ON b.id = s.business_id WHERE ps.business_id = ? AND ps.professional_id = ? AND s.id = ? AND s.active = TRUE AND b.is_public = TRUE FOR UPDATE`, [input.businessId,input.professionalId,input.serviceId]));
+  for (let attempt=0;;attempt++) {
+    try { return await transaction(pool, async c => {
+    if(request) {
+      await c.query('INSERT INTO appointment_requests (customer_user_id,request_key,body_hash) VALUES (?,?,?) ON DUPLICATE KEY UPDATE request_key=request_key',[input.actorId,request.key,request.hash]);
+      const [record]=rows<{body_hash:string;appointment_id:string|null}>(await c.query('SELECT body_hash,appointment_id FROM appointment_requests WHERE customer_user_id=? AND request_key=? FOR UPDATE',[input.actorId,request.key]));
+      if(record.body_hash!==request.hash) throw new AppointmentError('idempotency_conflict','Request already used');
+      if(record.appointment_id) {
+        const [a]=rows<CustomerAppointmentRow>(await c.query('SELECT id,business_id,professional_id,service_id,start_at,end_at,price_cents,currency,status FROM appointments WHERE id=? AND customer_user_id=?',[record.appointment_id,input.actorId]));
+        return {replayed:true,appointment:{id:a.id,businessId:a.business_id,professionalId:a.professional_id,serviceId:a.service_id,customerUserId:input.actorId,startAt:utcFromDatabase(a.start_at),endAt:utcFromDatabase(a.end_at),priceCents:a.price_cents,currency:a.currency,status:a.status}};
+      }
+    }
+    await lockBusiness(c,input.businessId);
+    const [candidate]=rows<{user_id:string|null}>(await c.query('SELECT user_id FROM professionals WHERE business_id=? AND id=?',[input.businessId,input.professionalId]));
+    if (!candidate || (request && !candidate.user_id)) throw new AppointmentError('unavailable','Professional unavailable');
+    if (candidate.user_id) await lockProfessionalUsers(c,[candidate.user_id]);
+    const professional=(await lockProfessionalProfiles(c,input.businessId,[input.professionalId])).get(input.professionalId);
+    if (!professional?.active || professional.user_id!==candidate.user_id) throw new AppointmentError('unavailable','Professional unavailable');
+    const services = rows<ServiceRow>(await c.query(`SELECT s.duration_minutes, s.price_cents, s.currency, b.timezone
+      FROM services s JOIN professional_services ps ON ps.business_id = s.business_id AND ps.service_id = s.id
+      JOIN businesses b ON b.id = s.business_id
+      WHERE ps.business_id = ? AND ps.professional_id = ? AND s.id = ? AND ps.active = TRUE AND s.active = TRUE AND b.is_public = TRUE
+        AND (? IS NULL OR EXISTS (SELECT 1 FROM memberships m WHERE m.business_id = b.id AND m.user_id = ? AND m.status = 'active'))
+      FOR UPDATE`, [input.businessId,input.professionalId,input.serviceId,candidate.user_id,candidate.user_id]));
     const service = services[0];
     if (!service || !Number.isSafeInteger(service.duration_minutes) || service.duration_minutes <= 0 || !Number.isSafeInteger(service.price_cents) || service.price_cents < 0) throw new AppointmentError('unavailable','Service unavailable');
+    const quote={priceCents:service.price_cents,currency:service.currency,durationMinutes:service.duration_minutes};
+    if(request && (quote.priceCents!==request.quote.priceCents||quote.currency!==request.quote.currency||quote.durationMinutes!==request.quote.durationMinutes)) throw new AppointmentError('offer_changed','Offer changed',quote);
+    if(start <= (deps.now??Date.now)()) throw new AppointmentError('unavailable','Slot unavailable');
     const end = start + service.duration_minutes * 60_000;
     if (!Number.isSafeInteger(end)) throw new AppointmentError('invalid','Invalid duration');
     let localStart, localEnd;
@@ -94,11 +149,20 @@ export async function createAppointment(pool: AppointmentPool, input: CreateInpu
     if ((!isMidnightEnd && (localStart.day !== localEnd.day || localStart.weekday !== localEnd.weekday)) || localStart.offset !== localEnd.offset || endSeconds <= localStart.seconds) throw new AppointmentError('unavailable','Schedule unavailable');
     const hours = rows<HoursRow>(await c.query('SELECT TIME_TO_SEC(start_time) AS start_seconds, TIME_TO_SEC(end_time) AS end_seconds FROM working_hours WHERE business_id = ? AND professional_id = ? AND weekday = ? FOR UPDATE', [input.businessId,input.professionalId,localStart.weekday]));
     if (!hours.some(h => Number(h.start_seconds) <= localStart.seconds && Number(h.end_seconds) >= endSeconds)) throw new AppointmentError('unavailable','Schedule unavailable');
-    const occupied = rows<{id:string}>(await c.query("SELECT id FROM appointments WHERE business_id = ? AND professional_id = ? AND status IN ('booked','completed','no_show') AND start_at < ? AND end_at > ? LIMIT 1 FOR UPDATE", [input.businessId,input.professionalId,dbTime(end),dbTime(start)]));
+    const closures=rows(await c.query('SELECT id FROM professional_closures WHERE business_id=? AND professional_id=? AND start_at < ? AND end_at > ? LIMIT 1 FOR UPDATE',[input.businessId,input.professionalId,dbTime(end),dbTime(start)]));
+    if(closures.length) throw new AppointmentError('conflict','Appointment conflict');
+    const occupied = rows<{id:string}>(await c.query(`SELECT id FROM appointments
+      WHERE (professional_id = ? OR professional_id IN (SELECT id FROM professionals WHERE user_id = ?))
+        AND status IN ('booked','completed','no_show') AND start_at < ? AND end_at > ? LIMIT 1 FOR UPDATE`,
+      [input.professionalId,candidate.user_id,dbTime(end),dbTime(start)]));
     if (occupied.length) throw new AppointmentError('conflict','Appointment conflict');
     await c.query("INSERT INTO appointments (id,business_id,professional_id,service_id,customer_user_id,start_at,end_at,status,notes,price_cents,currency) VALUES (?,?,?,?,?,?,?,'booked',?,?,?)", [id,input.businessId,input.professionalId,input.serviceId,input.actorId,dbTime(start),dbTime(end),input.notes ?? null,service.price_cents,service.currency]);
-    return {id,businessId:input.businessId,professionalId:input.professionalId,serviceId:input.serviceId,customerUserId:input.actorId,startAt:new Date(start).toISOString(),endAt:new Date(end).toISOString(),priceCents:service.price_cents,currency:service.currency,status:'booked' as const};
-  });
+    if(request) await c.query('UPDATE appointment_requests SET appointment_id=? WHERE customer_user_id=? AND request_key=?',[id,input.actorId,request.key]);
+    return {replayed:false,appointment:{id,businessId:input.businessId,professionalId:input.professionalId,serviceId:input.serviceId,customerUserId:input.actorId,startAt:new Date(start).toISOString(),endAt:new Date(end).toISOString(),priceCents:service.price_cents,currency:service.currency,status:'booked' as const}};
+    },true); } catch(error) {
+      if(attempt>=2 || !(error instanceof Error) || !('code' in error) || error.code!=='ER_LOCK_DEADLOCK') throw error;
+    }
+  }
 }
 
 /** Reads a professional agenda only for an active owner/admin or that professional. */
