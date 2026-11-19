@@ -10,8 +10,10 @@ import { catalogRoutes } from './catalog/routes.js';
 import type { CatalogService } from './catalog/service.js';
 import type { AuthRateLimiter } from './auth/rate-limit.js';
 import type { AvailabilityLimiter } from './appointments/rate-limit.js';
+import type { MembershipStore } from './product/membership-store.js';
+import { membershipRoutes } from './product/routes.js';
 
-export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService; authLimiter?: AuthRateLimiter; availabilityLimiter?: AvailabilityLimiter }) {
+export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService; authLimiter?: AuthRateLimiter; availabilityLimiter?: AvailabilityLimiter; memberships?: MembershipStore }) {
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '32kb' }));
@@ -25,6 +27,7 @@ if (options) {
   if (options.appointments) app.use('/api/appointments', appointmentRoutes(options.store, options.allowedOrigin, options.appointments, options.availabilityLimiter));
   if (options.professionals) app.use('/api/professionals', professionalRoutes(options.store, options.allowedOrigin, options.professionals));
   if (options.invitations) app.use('/api/invitations', invitationRoutes(options.store, options.allowedOrigin, options.invitations));
+  if (options.memberships) app.use('/api/me', membershipRoutes(options.store, options.memberships));
   if (options.catalog) app.use('/api', catalogRoutes(options.store, options.allowedOrigin, options.catalog));
 }
 
