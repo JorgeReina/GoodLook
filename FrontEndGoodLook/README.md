@@ -57,6 +57,23 @@ npx ng serve --configuration=product --host localhost
 
 Abrir `http://localhost:4200/`. Esta configuración de `serve` une el build `product` con `product-dev`: la base es `/`, el service worker no se registra y el proxy ya es `proxy.pilot.json`. En el paquete de entrega la base pasa a ser `/producto/`.
 
+Las rutas están en `src/app/product/product.routes.ts`. La carcasa es `shell.component`. El resto se reparte en `access`, `customer`, `agenda`, `management`, `install`, `api` y `shared`. En la tabla, la ruta vacía es el catálogo. Con `ng serve --configuration=product` van sobre `/`; en el paquete, sobre `/producto/`.
+
+| Ruta | Pantalla |
+| --- | --- |
+| (vacía) | Catálogo |
+| `piloto` | Redirige al catálogo |
+| `negocios/:id` | Ficha del negocio |
+| `reservar/:id` | Reserva |
+| `acceso` | Acceso o registro |
+| `mis-citas` | Citas propias; exige sesión |
+| `mi-agenda` | Agenda semanal; exige pertenencia de agenda |
+| `gestion` | Gestión; exige pertenencia, o `?alta=1` para dar de alta un negocio |
+| `invitacion` | Invitación de un solo uso |
+| `sesion-no-disponible` | La sesión no se pudo comprobar |
+| `sin-acceso` | La cuenta no tiene acceso a ese espacio |
+| cualquier otra | Página no encontrada |
+
 ### Piloto, build standalone
 
 No hay una configuración `serve` llamada `pilot`. El artefacto standalone se genera así:
