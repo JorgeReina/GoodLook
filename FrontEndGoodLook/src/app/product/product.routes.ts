@@ -28,18 +28,17 @@ const protectSpace: CanActivateFn = (route, state) => {
   }));
 };
 
-const pending = () => import('./shared/pending-page').then(module => module.PendingPage);
 const notice = () => import('./shared/notice-page').then(module => module.NoticePage);
 
 export const productRoutes: Routes = [
   { path: '', pathMatch: 'full', title: 'GoodLook · Catálogo', loadComponent: () => import('./catalog-preview-page').then(module => module.CatalogPreviewPage) },
   { path: 'piloto', pathMatch: 'full', redirectTo: '' },
-  { path: 'negocios/:id', title: 'GoodLook · Negocio', loadComponent: pending, data: { heading: 'Ficha del negocio' } },
-  { path: 'reservar/:id', title: 'GoodLook · Reservar', loadComponent: pending, data: { heading: 'Reservar' } },
+  { path: 'negocios/:id', title: 'GoodLook · Negocio', loadComponent: () => import('./customer/business-page').then(module => module.BusinessPage) },
+  { path: 'reservar/:id', title: 'GoodLook · Reservar', loadComponent: () => import('./customer/booking-page').then(module => module.BookingPage) },
   { path: 'acceso', title: 'GoodLook · Acceso', loadComponent: () => import('./access/access-page').then(module => module.AccessPage) },
   {
-    path: 'mis-citas', title: 'GoodLook · Mis citas', loadComponent: pending, canActivate: [protectSpace],
-    data: { heading: 'Mis citas', space: 'customer' },
+    path: 'mis-citas', title: 'GoodLook · Mis citas', canActivate: [protectSpace], data: { space: 'customer' },
+    loadComponent: () => import('./customer/my-bookings-page').then(module => module.MyBookingsPage),
   },
   {
     path: 'mi-agenda', title: 'GoodLook · Mi agenda', loadComponent: () => import('./agenda/weekly-agenda-page').then(module => module.WeeklyAgendaPage), canActivate: [protectSpace],

@@ -40,7 +40,7 @@ describe('Carcasa GoodLook', () => {
     http.expectOne({ url: '/api/auth/logout', method: 'POST' }).flush(null);
     await fixture.whenStable();
     fixture.detectChanges();
-    http.expectOne('/api/businesses').flush([]);
+    http.expectOne('/api/catalog/businesses').flush([]);
     expect(router.url).toBe('/');
     expect(host.querySelector('nav a[href="/gestion"]')).toBeNull();
     expect(host.querySelector('nav a[href="/mi-agenda"]')).toBeNull();
@@ -83,6 +83,7 @@ describe('Carcasa GoodLook', () => {
     expect(router.url).toBe('/mis-citas');
     expect(host.querySelector('nav a[href="/mis-citas"]')?.getAttribute('aria-current')).toBe('page');
     expect(host.querySelector('nav a[href="/gestion"]')).toBeNull();
+    http.expectOne(request => request.url === '/api/me/bookings').flush({ items: [], nextCursor: null });
     http.verify();
   });
 });

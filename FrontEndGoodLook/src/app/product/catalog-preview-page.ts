@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
 import type { PublicBusiness } from './api/contracts';
-import { ProductApiService } from './api/product-api.service';
+import { CustomerApi } from './customer/customer-api';
 import { StatusMessage } from './shared/status-message';
 
 type CatalogState =
@@ -10,7 +11,7 @@ type CatalogState =
   | { kind: 'ready'; businesses: PublicBusiness[] };
 
 @Component({
-  imports: [MatButtonModule, StatusMessage],
+  imports: [MatButtonModule, RouterLink, StatusMessage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="catalog-hero" aria-labelledby="catalog-heading">
@@ -33,7 +34,7 @@ type CatalogState =
             <ul class="catalog-list">
               @for (business of catalog.businesses; track business.id) {
                 <li>
-                  <h3>{{ business.name }}</h3>
+                  <h3><a [routerLink]="['/negocios', business.id]">{{ business.name }}</a></h3>
                   @if (business.sector) { <p>{{ business.sector }}</p> }
                   @if (business.address) { <p>{{ business.address }}</p> }
                 </li>
@@ -74,7 +75,7 @@ type CatalogState =
   `,
 })
 export class CatalogPreviewPage {
-  private readonly api = inject(ProductApiService);
+  private readonly api = inject(CustomerApi);
   private readonly destroy = inject(DestroyRef);
   protected readonly state = signal<CatalogState>({ kind: 'loading' });
 

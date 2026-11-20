@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import type { Credentials, Membership, PublicBusiness, Registration, SessionUser } from './contracts';
+import type { Credentials, Membership, Registration, SessionUser } from './contracts';
 
 @Injectable({ providedIn: 'root' })
 export class ProductApiService {
@@ -24,9 +24,5 @@ export class ProductApiService {
 
   logout() {
     return this.http.post<void>('/api/auth/logout', {});
-  }
-
-  businesses() {
-    return this.http.get<PublicBusiness[]>('/api/businesses');
   }
 }
