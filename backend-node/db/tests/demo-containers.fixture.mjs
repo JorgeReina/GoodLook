@@ -72,10 +72,7 @@ export function mockDocker(t, {
       return '';
     }
     assert.deepEqual(args.slice(2), ['inspect', '--type', 'container', containerId]);
-    const portBindings = {
-      '3306/tcp': [{ HostIp: '127.0.0.1', HostPort: '33317' }],
-      '33060/tcp': null,
-    };
+    const portBindings = { '3306/tcp': [{ HostIp: '127.0.0.1', HostPort: '33317' }] };
     const container = {
       Id: containerId,
       Name: '/' + project + '-mysql-1',
