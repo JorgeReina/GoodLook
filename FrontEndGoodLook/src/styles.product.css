@@ -80,6 +80,7 @@ a { color: inherit; }
 .gl-work-panel input:not([type=checkbox]), .gl-work-panel select, #agenda-business { font: inherit; max-width: 100%; padding: .45rem; }
 .gl-work-panel button:not([matButton]), .gl-actions button:not([matButton]) { font: inherit; padding: .45rem .65rem; cursor: pointer; }
 .gl-work-panel fieldset { margin-block: 1rem; min-width: 0; border: 1px solid var(--gl-line); }
+.gl-management-editor { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 .gl-work-panel .gl-checkbox { display: flex; align-items: center; gap: .4rem; }
 .gl-week { display: grid; gap: .65rem; }
 .gl-week .gl-work-panel { margin: 0; overflow-wrap: anywhere; }

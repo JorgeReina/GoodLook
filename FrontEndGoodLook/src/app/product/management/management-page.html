@@ -2,21 +2,21 @@
 <div class="gl-actions">
   @if (memberships().length) {
     <label>Negocio
-      <select #shop (change)="selectBusiness(shop.value)" [disabled]="busy()">
+      <select #shop (change)="selectBusiness(shop.value)" [disabled]="busy() || !!impact()">
         @for (item of memberships(); track item.businessId) {
           <option [value]="item.businessId" [selected]="item.businessId === businessId()">{{ item.businessName }}</option>
         }
       </select>
     </label>
   }
-  @if (!creating()) { <button matButton="outlined" type="button" (click)="beginCreate()" [disabled]="busy()">Crear negocio</button> }
+  @if (!creating()) { <button matButton="outlined" type="button" (click)="beginCreate()" [disabled]="busy() || !!impact()">Crear negocio</button> }
   @if (creating() && businessId()) { <button type="button" (click)="selectBusiness(businessId())" [disabled]="busy()">Volver al negocio</button> }
 </div>
 @if (error()) { <gl-status kind="error">{{ error() }}</gl-status> }
 @if (feedback()) { <gl-status>{{ feedback() }}</gl-status> }
 @if (busy()) { <gl-status>Procesando…</gl-status> }
 @if (impact(); as warning) {
-  <div class="gl-work-panel" role="alert">
+  <div #impactNotice class="gl-work-panel" role="alert" tabindex="-1">
     <p>El cambio afecta a {{ warning.affectedCount }} citas próximas. Las citas se conservan.</p>
     <div class="gl-actions">
       <button type="button" (click)="confirmImpact(warning)" [disabled]="busy()">Confirmar cambio</button>
@@ -24,6 +24,7 @@
     </div>
   </div>
 }
+<fieldset class="gl-management-editor" [disabled]="busy() || !!impact()">
 @if (creating() || (detail() && owner())) {
   <section class="gl-work-panel">
     <h2>{{ creating() ? 'Nuevo negocio' : 'Ficha del negocio' }}</h2>
@@ -144,3 +145,4 @@
     <button type="button" (click)="selectBusiness(businessId())">Volver a cargar el negocio</button>
   }
 }
+</fieldset>

@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { afterNextRender, Component, computed, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -25,6 +25,7 @@ export class ManagementPage {
   private readonly api = inject(ManagementApi);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
   private readonly session = inject(SessionService);
   protected readonly memberships = this.session.managementMemberships;
@@ -38,6 +39,7 @@ export class ManagementPage {
   protected readonly error = signal('');
   protected readonly feedback = signal('');
   protected readonly impact = signal<Impact | null>(null);
+  private readonly impactNotice = viewChild<ElementRef<HTMLElement>>('impactNotice');
   protected readonly invitation = signal('');
   protected readonly revision = signal(0);
   protected readonly localTime = displayInstant;
@@ -129,6 +131,7 @@ export class ManagementPage {
     const body = error instanceof HttpErrorResponse ? error.error : null;
     if (action && body?.code === 'impact_confirmation_required' && typeof body.impactToken === 'string') {
       this.impact.set({ action, affectedCount: body.affectedCount, token: body.impactToken });
+      afterNextRender(() => this.impactNotice()?.nativeElement.focus(), { injector: this.injector });
       return;
     }
     const messages: Record<string, string> = {
