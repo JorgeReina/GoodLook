@@ -43,4 +43,15 @@ test('VERCEL=1 fails closed without falling back to the socket or to other heade
 test('equivalent IPv4 forms share one address', () => {
   assert.equal(clientAddress(peer('::ffff:192.0.2.10'), {}), '192.0.2.10');
   assert.equal(clientAddress(peer('10.0.0.8', { 'x-vercel-forwarded-for': '::ffff:203.0.113.10' }), { VERCEL: '1' }), '203.0.113.10');
+  assert.equal(clientAddress(peer('0:0:0:0:0:ffff:c000:20a'), {}), '192.0.2.10');
+});
+
+test('equivalent IPv6 spellings share one address and a /64 does not', () => {
+  const expanded = '2001:0db8:0000:0000:0000:0000:0000:0001';
+  const compressed = '2001:DB8::1';
+  assert.equal(clientAddress(peer(expanded), {}), clientAddress(peer(compressed), {}));
+  assert.equal(clientAddress(peer('10.0.0.1', { 'x-vercel-forwarded-for': expanded }), { VERCEL: '1' }), '2001:db8::1');
+  assert.equal(clientAddress(peer('2001:db8:0:0:1:0:0:1'), {}), '2001:db8::1:0:0:1');
+  assert.equal(clientAddress(peer('2001:db8:0:1:0:0:0:1'), {}), '2001:db8:0:1::1');
+  assert.notEqual(clientAddress(peer('2001:db8:1:2::1'), {}), clientAddress(peer('2001:db8:1:2::2'), {}));
 });
