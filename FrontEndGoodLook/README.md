@@ -1,27 +1,104 @@
 # FrontEndGoodLook
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.8.
+Un solo proyecto Angular 22, con Angular Material y CDK. El mismo árbol tiene tres superficies:
 
-## Development server
+1. **Aplicación heredada.** `src/main.ts` arranca `AppModule` (NgModule). Es lo que sirven `ng serve` y `ng build` cuando no se elige otra configuración. El destino de este código, y el de `/piloto`, sigue abierto en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17).
+2. **Piloto.** La configuración `pilot` (`src/main.pilot.ts`) arranca el piloto como aplicación propia. En el paquete de entrega, Vercel sirve ese `index.html` en `/piloto`. El uso con la API está en [PILOTO.md](PILOTO.md).
+3. **Producto PWA.** La configuración `product` (`src/main.product.ts`) es la aplicación instalable. En el paquete se publica bajo `/producto/`.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+El diario de la migración está en [docs/migracion/](../docs/migracion/).
 
-## Code scaffolding
+## Versiones
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+Comprobadas con `npx ng version` a partir de `package-lock.json`, en Node 24.22.3:
+
+| Paquete | Versión |
+| --- | --- |
+| Angular (`@angular/core` y el resto del framework) | 22.2.6 |
+| Angular CLI y `@angular-devkit/build-angular` | 22.2.7 |
+| Angular Material y CDK | 22.3.0 |
+| TypeScript | 6.0.3 |
+| RxJS | 7.8.2 |
+| zone.js | 0.15.1 |
+
+## Requisitos
+
+Node.js 24, en el intervalo `>=24 <25` del campo `engines` del `package.json` de la raíz. El flujo de GitHub Actions instala Node 24. Esta guía se ejecutó con Node 24.22.3.
+
+Hace falta el `package-lock.json` de este directorio. Una instalación anterior, de cuando el proyecto era Angular 16, no sirve: el CLI actual ya no acepta `browserTarget` y el servidor de desarrollo no arranca.
+
+## Instalación
+
+Desde `FrontEndGoodLook`:
+
+```sh
+npm ci
+```
+
+## Desarrollo local
+
+La API de desarrollo escucha en `127.0.0.1:3000`. El proxy `proxy.pilot.json` reenvía `/api` a esa dirección. La API tiene que aceptar el origen `http://localhost:4200` (`APP_ORIGIN`). Cómo levantarla, con una base Docker aislada, está en [PILOTO.md](PILOTO.md).
+
+### Piloto, dentro de la aplicación heredada
+
+```sh
+npx ng serve --host localhost --proxy-config proxy.pilot.json
+```
+
+Abrir `http://localhost:4200/piloto`. Este servidor arranca `AppModule`. El enrutador carga el componente del piloto en `/piloto`.
+
+### Producto
+
+```sh
+npx ng serve --configuration=product --host localhost
+```
+
+Abrir `http://localhost:4200/`. Esta configuración de `serve` une el build `product` con `product-dev`: la base es `/`, el service worker no se registra y el proxy ya es `proxy.pilot.json`. En el paquete de entrega la base pasa a ser `/producto/`.
+
+### Piloto, build standalone
+
+No hay una configuración `serve` llamada `pilot`. El artefacto standalone se genera así:
+
+```sh
+npm run build -- --configuration=pilot
+```
+
+El `index.html` de `dist/front-end-good-look` arranca solo el piloto (`<app-pilot>`, título «GoodLook piloto»). En Vercel, la ruta `/piloto` reescribe a ese archivo. El `npm run build` de la raíz incluye este paso.
 
 ## Build
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+Desde la raíz del repositorio:
 
-## Running unit tests
+```sh
+npm run build
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+Ese script instala este paquete, compila el piloto (`--configuration=pilot`) y después el producto (`--configuration=product --base-href=/producto/ --output-path=dist/front-end-good-look/producto`), y ejecuta `scripts/verify-product-package.mjs`. El resultado queda en `FrontEndGoodLook/dist/front-end-good-look`.
 
-## Running end-to-end tests
+Ese directorio es el que publica Vercel. `vercel.json` redirige `/` a `/producto/` y conserva `/piloto` como entrada del piloto.
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+El script `build` de este paquete, sin argumentos, es `ng build`. Su configuración por defecto se llama `production` y toma `src/main.ts`: empaqueta la aplicación heredada, no el piloto ni el producto.
 
-## Further help
+## Pruebas
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+Los specs de Karma del producto, los mismos que ejecuta el CI:
+
+```sh
+npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts'
+```
+
+Hace falta Chrome o Chromium local, que Karma abre como `ChromeHeadless`. En el runner de GitHub Actions el flujo apunta `CHROME_BIN` al Chromium de Playwright con `--no-sandbox`, porque ese entorno bloquea los namespaces del navegador.
+
+La aceptación de navegador del producto es el script `test:e2e` (Playwright). El orden, con la API y una base Docker, está en [PILOTO.md](PILOTO.md).
+
+## Lint
+
+Este paquete no define lint. `package.json` no tiene un script `lint` y `angular.json` no declara ese target. `npx ng lint` termina con «Cannot find "lint" target for the specified project».
+
+## CI
+
+El flujo [`.github/workflows/goodlook-product.yml`](../.github/workflows/goodlook-product.yml) corre en `push` y `pull_request` hacia `main` y `work/goodlook-migracion`, y también con `workflow_dispatch`. Usa Node 24.
+
+En la parte de frontend ejecuta el `npm run build` de la raíz y, dentro de `FrontEndGoodLook`, los specs de Karma con `--include='src/app/product/**/*.spec.ts'`. Ese filtro deja fuera el resto de specs de `src/app`: la aplicación heredada y el piloto. Entre los que quedan fuera hay 6 specs heredados que fallan; están registrados en el [issue #26](https://github.com/JorgeReina/GoodLook/issues/26).
+
+El mismo flujo también compila y prueba la API, corre la integración MySQL y MariaDB, e instala Chromium para `npm run test:e2e`. Esos pasos no cambian el filtro de Karma.
