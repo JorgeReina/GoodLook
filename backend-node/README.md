@@ -201,7 +201,7 @@ Los archivos MySQL están en `db/migrations`. Los de MariaDB, con su propia cola
 
 ## Pruebas y comprobación estática
 
-No hay un script `lint` ni ESLint en `backend-node`. La comprobación estática es `npm run typecheck`.
+No hay ESLint. La comprobación de TypeScript es `npm run typecheck`. La especificación se valida con `npm run lint:openapi` (`@redocly/cli`, versión fijada). El mismo comando corre en CI, dentro del paso de build y pruebas de la API, antes de `npm test`.
 
 Desde `backend-node`, con las dependencias de `npm ci`:
 
