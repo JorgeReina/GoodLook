@@ -29,4 +29,4 @@ La suite Docker cubre la actualización y reaplicación de migraciones, el contr
 
 Con Node 24.22.3 pasaron `npm test` (93 pruebas), `node --test db/tests/*.test.mjs` (33 pruebas), `npm run typecheck` y `npm run build`. Los comandos `bash ./scripts/test-mysql-integration.sh mysql` y `bash ./scripts/test-mysql-integration.sh mariadb` pasaron en serie con MySQL 8.4.13 y MariaDB 10.11.19 y retiraron sus contenedores y redes.
 
-Los cambios de configuración que incorpora la tarea 4 deberán pasar las carreras de nuevo con sus rutas integradas.
+Con las rutas reales de Gestión integradas, la suite ejecuta en paralelo `POST /api/bookings` y operaciones HTTP de cierres, horarios, precio y visibilidad. Comprueba que una cita nueva invalida un aviso de impacto anterior, que la nueva confirmación conserva las citas existentes y que el cliente recibe las condiciones vigentes si cambia la oferta. El mismo arnés verifica el alcance de la agenda y dos aceptaciones simultáneas de una invitación. Pasaron las cinco pruebas de integración en cada motor en la verificación del 20-11-2026.
