@@ -1,9 +1,10 @@
-import { DOCUMENT } from '@angular/common';
 import { afterNextRender, ChangeDetectionStrategy, Component, DestroyRef, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, finalize } from 'rxjs';
+import { ProductConnection } from './install/connection.service';
+import { ProductUpdate } from './install/update.service';
 import { SessionService } from './session.service';
 import { StatusMessage } from './shared/status-message';
 
@@ -13,8 +14,8 @@ import { StatusMessage } from './shared/status-message';
   templateUrl: './shell.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    '(window:online)': 'connectionChanged(true)',
-    '(window:offline)': 'connectionChanged(false)',
+    '(window:online)': 'reconnected()',
+    '(window:focus)': 'updates.check()',
   },
 })
 export class ShellComponent {
@@ -23,7 +24,8 @@ export class ShellComponent {
   private readonly injector = inject(Injector);
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
   protected readonly session = inject(SessionService);
-  protected readonly online = signal(inject(DOCUMENT).defaultView?.navigator.onLine ?? true);
+  protected readonly updates = inject(ProductUpdate);
+  protected readonly online = inject(ProductConnection).online;
   protected readonly endingSession = signal(false);
   protected readonly logoutError = signal(false);
   protected readonly exactLink = { exact: true };
@@ -44,9 +46,9 @@ export class ShellComponent {
     this.main().nativeElement.focus();
   }
 
-  protected connectionChanged(online: boolean) {
-    this.online.set(online);
-    if (online && this.session.status() === 'unavailable') this.retrySession();
+  protected reconnected() {
+    void this.updates.check();
+    if (this.session.status() === 'unavailable') this.retrySession();
   }
 
   protected retrySession() {

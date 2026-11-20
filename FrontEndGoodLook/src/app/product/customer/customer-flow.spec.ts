@@ -111,6 +111,29 @@ describe('Recorrido cliente de producto', () => {
     expect(content().textContent).toContain('Cita confirmada');
   });
 
+  it('deshabilita la confirmación sin conexión y permite reintentar al recuperarla', async () => {
+    await startBooking();
+    try {
+      window.dispatchEvent(new Event('offline'));
+      render();
+      expect(button('Confirmar reserva').disabled).toBeTrue();
+      button('Confirmar reserva').click();
+      http.expectNone('/api/bookings');
+
+      window.dispatchEvent(new Event('online'));
+      render();
+      button('Confirmar reserva').click();
+      http.expectOne('/api/bookings').error(new ProgressEvent('error'));
+      render();
+      window.dispatchEvent(new Event('offline'));
+      render();
+      expect(button('Reintentar confirmación').disabled).toBeTrue();
+      http.expectNone('/api/bookings');
+    } finally {
+      window.dispatchEvent(new Event('online'));
+    }
+  });
+
   it('muestra un cambio de oferta y espera otra confirmación antes de enviar', async () => {
     await startBooking();
     button('Confirmar reserva').click();

@@ -16,7 +16,7 @@
         <gl-status>Comprobando la reserva…</gl-status>
       } @else if (session.user()) {
         <div class="gl-actions">
-          <button matButton="filled" (click)="confirm()">Reintentar confirmación</button>
+          <button matButton="filled" (click)="confirm()" [disabled]="!online()">Reintentar confirmación</button>
           <a routerLink="/mis-citas">Consultar Mis citas</a>
         </div>
       } @else {
@@ -121,7 +121,7 @@
                               (input)="changeNotes(notesInput.value)"></textarea>
                   </label>
                   <p id="note-guidance">Evita incluir datos sensibles. Máximo 500 caracteres. {{ noteCount() }}/500</p>
-                  <button matButton="filled" [disabled]="availabilityState() !== 'ready' || noteCount() > 500"
+                  <button matButton="filled" [disabled]="!online() || availabilityState() !== 'ready' || noteCount() > 500"
                           (click)="confirm()">Confirmar reserva</button>
                 } @else if (session.status() === 'checking') {
                   <gl-status>Comprobando sesión…</gl-status>
