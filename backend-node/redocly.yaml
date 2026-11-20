@@ -1,0 +1,6 @@
+extends:
+  - recommended
+rules:
+  # The API document is not the project license. package.json declares ISC.
+  info-license: off
+  info-license-strict: off

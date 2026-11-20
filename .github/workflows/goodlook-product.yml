@@ -31,6 +31,7 @@ jobs:
         working-directory: backend-node
         run: |
           npm ci --no-audit --no-fund
+          npm run lint:openapi
           npm run build
           npm test
           node --test db/tests/*.test.mjs
