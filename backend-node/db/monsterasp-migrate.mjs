@@ -16,7 +16,7 @@ try {
   console.log('Applied MariaDB migrations to the pinned database.');
 } catch {
   // Do not print driver errors, connection strings, or credentials.
-  console.error('Test database migration failed. Inspect the target state before retrying; DDL may be partially applied.');
+  console.error('Pinned database migration failed. Inspect the target state before retrying; DDL may be partially applied.');
   process.exitCode = 1;
 } finally {
   if (connection) await connection.end();

@@ -151,4 +151,4 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 ## Separación de preview y producción (20-11-2026)
 
 - El diagnóstico de código confirma lo ya anotado: preview y producción eligen la base solo con `DATABASE_URL`. Nada en el repositorio les obliga a usar destinos distintos, y el estado documentado es que ambos apuntan a `db80496`. Esta revisión no ha abierto Vercel ni MonsterASP.
-- La API se niega a arrancar en rol preview, y también con `VERCEL=1` si `VERCEL_ENV` no es `production`, cuando el host, el nombre o el usuario coinciden con `db80496`. La base nueva y el cambio de variables siguen siendo manuales. Procedimiento, coste orientativo y vuelta atrás: [ENTORNOS.md](ENTORNOS.md).
+- La API no asigna el papel `development` cuando faltan `GOODLOOK_DATA_ENV` y `VERCEL_ENV`: sin papel, una base remota impide el arranque. La identidad de producción está solo en `backend-node/config/production-database.json`. La base nueva y el cambio de variables siguen siendo manuales. Procedimiento, coste orientativo y vuelta atrás: [ENTORNOS.md](ENTORNOS.md).

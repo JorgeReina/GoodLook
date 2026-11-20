@@ -54,17 +54,19 @@ Los tres papeles son `development`, `preview` y `production`. En Vercel se confi
 
 | Variable | Desarrollo (local / CI) | Preview (Vercel) | Production (Vercel) |
 | --- | --- | --- | --- |
-| `GOODLOOK_DATA_ENV` | `development` | `preview` | `production` |
+| `GOODLOOK_DATA_ENV` | `development` en local con Docker. Sin esta variable ni `VERCEL_ENV`, el papel queda sin declarar | `preview` | `production` |
 | `DATABASE_URL` | `mysql://goodlook_test:…@127.0.0.1:33317/goodlook_disposable_test` | URL nueva. Host, nombre y usuario distintos de `db80496` | La URL actual de `db80496.public.databaseasp.net` / `db80496` / `db80496` |
 | `MYSQL_TLS` | sin definir | `true` | `true` |
 | `MYSQL_ALLOW_INSECURE_LOCAL` | `true` solo en loopback | sin definir | sin definir |
 | `APP_ORIGIN` | `http://localhost:4200` | `https://` + alias estable de la rama, sin barra final | `https://good-look.vercel.app` |
 | `AUTH_LIMIT_SECRET` | el valor de demostración, solo en local | secreto hex nuevo, de al menos 32 bytes, distinto del de producción | el secreto que ya usa producción |
+| Identidad de producción | `backend-node/config/production-database.json` (host, nombre y usuario; no es un secreto) | el mismo archivo, incluido en el despliegue | el mismo archivo |
+| `GOODLOOK_ALLOW_PRODUCTION_DATABASE` | sin definir. `YES` solo en una shell local que deba abrir esa identidad a propósito | sin definir | sin definir |
 | `VERCEL`, `VERCEL_ENV` | sin definir | las inyecta la plataforma | las inyecta la plataforma |
 | `GOODLOOK_MIGRATION_TARGET` | `test` o `development` en el migrador local | `preview`, solo en la shell que migra, no en el despliegue | no usarla en el despliegue |
 | `GOODLOOK_MIGRATION_DIALECT` | `mysql` o `mariadb` según el contenedor | `mariadb` en la shell que migra | no usarla en el despliegue |
 
-`GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` queda fuera de Vercel. Solo acompaña una migración consciente de `db80496`.
+`GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` queda fuera de Vercel. Solo acompaña una migración consciente de la identidad configurada. `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` tampoco se pone en Vercel: no abre esa identidad si el papel es preview.
 
 En Preview, `APP_ORIGIN` es el alias de rama que Vercel muestra en el despliegue (estable mientras esa rama reciba los previews). Las URLs de un commit concreto tienen otro host: quien las abra recibe 403 en las escrituras. Frontend y QA usan el alias. La cookie no se comparte con `good-look.vercel.app`.
 
@@ -73,17 +75,19 @@ En Preview, `APP_ORIGIN` es el alias de rama que Vercel muestra en el despliegue
 Al arrancar, y también al limpiar contadores con `cleanup-rate-limits`, la API calcula el papel:
 
 - `GOODLOOK_DATA_ENV` manda si está definido (`development`, `preview` o `production`).
-- Si no, `VERCEL_ENV=preview` o `VERCEL_ENV=production` fijan el papel.
-- En cualquier otro caso el papel es `development`.
+- Si no, `VERCEL_ENV` (`development`, `preview` o `production`) fija el papel.
+- Si no hay ninguna de las dos, el papel queda `undeclared`. No se hereda `development`.
 - Si `GOODLOOK_DATA_ENV` contradice un `VERCEL_ENV` de preview o production, el proceso se detiene.
 
-Si el papel es `preview` y el host, el nombre de base o el usuario coinciden con `db80496` (sin distinguir mayúsculas, y con un punto final en el host), el proceso se detiene. El mismo corte se aplica cuando `VERCEL=1` y `VERCEL_ENV` no es `production`, aunque alguien marque el papel como `production` para intentar saltárselo. Un valor de `VERCEL` distinto de `1` también detiene el arranque. El mensaje no incluye la URL ni la contraseña.
+La identidad de producción se lee de `backend-node/config/production-database.json`: host, nombre y usuario. Es la única copia. No es un secreto. Un campo vacío deja la identidad sin configurar.
 
-El migrador rechaza esa identidad en los destinos `test`, `development` y `preview`, también con la excepción de producción activada. El destino `production` sigue exigiendo la excepción.
+Con esa identidad, el proceso se niega a abrirla salvo que el papel sea `production` (`GOODLOOK_DATA_ENV=production` o `VERCEL_ENV=production`). `GOODLOOK_DATA_ENV=development` no basta. La excepción local `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` abre esa identidad fuera de preview; en preview se ignora. `VERCEL=1` sin `VERCEL_ENV=production` tampoco puede abrirla. La comparación no distingue mayúsculas y admite un punto final en el host. El mensaje no incluye la URL ni la contraseña.
 
-Queda un hueco consciente: un proceso local sin `VERCEL` todavía puede abrir `db80496`. Sirve para una intervención de release y no convierte un preview de Vercel en esa base. La salvaguarda tampoco reconoce la base si algún día cambia de host, de nombre y de usuario a la vez. Si la identidad de producción cambia, hay que actualizar a la vez `backend-node/db/production-identity.mjs` y `backend-node/src/data-guard.ts` antes de fiarse del corte. El test de paridad falla si las dos copias se separan.
+Sin papel declarado, cualquier base que no sea loopback (`localhost`, `127.0.0.1` o `::1`) impide el arranque. Un preview sin variables de sistema y con la URL antigua de producción no arranca. El loopback sigue sirviendo para Docker, CI y las pruebas.
 
-Otra condición para que el corte vea el preview de Vercel: el proyecto debe exponer las variables de sistema, y Preview debe llevar `GOODLOOK_DATA_ENV=preview`. Con las dos, un olvido de una de ellas sigue bastando. Sin ninguna, un despliegue preview con la URL antigua arrancaría como desarrollo y abriría `db80496`.
+Si el archivo de identidad falta o está incompleto, preview, development y un papel sin declarar rechazan toda base remota: no hay forma de demostrar que no es producción. El papel `production` explícito sí puede arrancar, porque parar el dominio público por un archivo ausente sería otro incidente; en ese caso la guarda no clasifica el destino y hay que restaurar el archivo antes de fiarse de preview.
+
+El migrador aplica el mismo corte: los destinos `test`, `development` y `preview` rechazan la identidad configurada, también con `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES`. Sin identidad configurada, un destino que no sea `production` rechaza una base remota. El destino `production` sigue exigiendo esa excepción de migración.
 
 ## Migraciones 001 a 006 en la base de preview
 

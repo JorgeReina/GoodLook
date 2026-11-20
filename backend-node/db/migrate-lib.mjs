@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { matchesProductionDatabase } from './production-identity.mjs';
+import { isLoopbackHost, matchesProductionDatabase, readProductionDatabase } from './production-identity.mjs';
 
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
@@ -36,8 +36,12 @@ export function parseConfig(env) {
   let database, user, password;
   try { database = decodeURIComponent(url.pathname.slice(1)); user = decodeURIComponent(url.username); password = decodeURIComponent(url.password); } catch { throw new Error('Invalid DATABASE_URL encoding'); }
   if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
-  if (target !== 'production' && matchesProductionDatabase({ host: url.hostname, database, user })) {
-    throw new Error('Refusing to migrate the production database identity');
+  if (!isLoopbackHost(url.hostname)) {
+    const production = readProductionDatabase();
+    if (!production && target !== 'production') throw new Error('Production database identity is not configured; refusing a non-loopback database');
+    if (target !== 'production' && matchesProductionDatabase({ host: url.hostname, database, user }, production)) {
+      throw new Error('Refusing to migrate the production database identity');
+    }
   }
   return { host: url.hostname, port, user, password, database, timezone: 'Z', multipleStatements: true,
     ssl: tls ? { rejectUnauthorized: true } : undefined };
