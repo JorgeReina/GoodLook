@@ -1,0 +1,140 @@
+<a [routerLink]="['/negocios', businessId()]">Volver a la ficha</a>
+<section class="gl-panel booking-panel">
+  <h1 tabindex="-1">Reservar cita</h1>
+  @if (business(); as place) { <p class="gl-lede">{{ place.name }}</p> }
+  @if (message()) { <gl-status kind="error">{{ message() }}</gl-status> }
+  @if (receipt(); as confirmed) {
+    <gl-status kind="success">
+      <strong>{{ confirmed.status === 'booked' ? 'Cita confirmada' : 'Cita recuperada' }}</strong>
+      <p>{{ slotDate(confirmed.startAt, timezone()) }} · {{ price(confirmed.priceCents, confirmed.currency) }}</p>
+      <a routerLink="/mis-citas">Consultar Mis citas</a>
+    </gl-status>
+  } @else if (draft()?.attempt) {
+    <div class="booking-summary">
+      <h2>Confirmación pendiente</h2>
+      @if (submitting()) {
+        <gl-status>Comprobando la reserva…</gl-status>
+      } @else if (session.user()) {
+        <div class="gl-actions">
+          <button matButton="filled" (click)="confirm()" [disabled]="!online()">Reintentar confirmación</button>
+          <a routerLink="/mis-citas">Consultar Mis citas</a>
+        </div>
+      } @else {
+        <a matButton="filled" routerLink="/acceso" [queryParams]="returnTo()">Iniciar sesión</a>
+      }
+    </div>
+  } @else {
+    @switch (catalogState()) {
+      @case ('loading') { <gl-status>Cargando servicios…</gl-status> }
+      @case ('missing') { <gl-status kind="empty">El negocio no está disponible.</gl-status> }
+      @case ('error') {
+        <gl-status kind="error">No pudimos cargar los servicios.</gl-status>
+        <button matButton="outlined" (click)="loadCatalog()">Volver a intentar</button>
+      }
+      @case ('ready') {
+        @if (services().length) {
+          <label class="booking-field">
+            Servicio
+            <select #serviceSelect aria-label="Servicio" (change)="selectService(serviceSelect.value)">
+              <option value="" [selected]="!service()">Elegir servicio</option>
+              @for (item of services(); track item.id) {
+                <option [value]="item.id" [selected]="service()?.id === item.id">
+                  {{ item.name }} · {{ item.durationMinutes }} min · {{ price(item.priceCents, item.currency) }}
+                </option>
+              }
+            </select>
+          </label>
+          @if (service()) {
+            @switch (staffState()) {
+              @case ('loading') { <gl-status>Cargando profesionales…</gl-status> }
+              @case ('error') {
+                <gl-status kind="error">No pudimos cargar los profesionales.</gl-status>
+                <button matButton="outlined" (click)="loadStaff()">Volver a intentar</button>
+              }
+              @case ('ready') {
+                @if (staff().length) {
+                  <label class="booking-field">
+                    Profesional
+                    <select #professionalSelect aria-label="Profesional" (change)="selectProfessional(professionalSelect.value)">
+                      <option value="" [selected]="!professional()">Elegir profesional</option>
+                      @for (item of staff(); track item.id) {
+                        <option [value]="item.id" [selected]="professional()?.id === item.id">{{ item.displayName }}</option>
+                      }
+                    </select>
+                  </label>
+                } @else {
+                  <gl-status kind="empty">No hay profesionales disponibles para este servicio.</gl-status>
+                }
+              }
+            }
+          }
+          @if (professional()) {
+            <fieldset class="booking-slots">
+              <legend>Horarios disponibles</legend>
+              <p>{{ range() }} · {{ timezone() }}</p>
+              <div class="gl-actions">
+                <button matButton="outlined" [disabled]="draft()?.weekOffset === 0" (click)="changeWeek(-1)">Periodo anterior</button>
+                <button matButton="outlined" (click)="changeWeek(1)">Siguientes 7 días</button>
+              </div>
+              @switch (availabilityState()) {
+                @case ('loading') { <gl-status>Buscando huecos…</gl-status> }
+                @case ('missing') { <gl-status kind="empty">Este servicio ya no está disponible.</gl-status> }
+                @case ('error') {
+                  <gl-status kind="error">No pudimos consultar los horarios.</gl-status>
+                  <button matButton="outlined" (click)="loadAvailability()">Volver a intentar</button>
+                }
+                @case ('ready') {
+                  @if (days().length) {
+                    @for (day of days(); track day.day) {
+                      <div class="booking-day">
+                        <h2>{{ day.day }}</h2>
+                        <div class="booking-times">
+                          @for (slot of day.items; track slot.startAt) {
+                            <label>
+                              <input type="radio" name="appointment-slot" [checked]="draft()?.slot?.startAt === slot.startAt"
+                                     [attr.aria-label]="slotDate(slot.startAt, timezone())"
+                                     (change)="selectSlot(slot)">
+                              <span>{{ slotTime(slot.startAt, timezone()) }}</span>
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <gl-status kind="empty">No hay huecos en este periodo.</gl-status>
+                  }
+                }
+              }
+            </fieldset>
+          }
+          @if (draft()?.slot; as slot) {
+            @if (quote(); as terms) {
+              <section class="booking-summary" aria-labelledby="booking-summary-title">
+                <h2 id="booking-summary-title">Resumen</h2>
+                <p>{{ service()?.name }} · {{ professional()?.displayName }}</p>
+                <p>{{ slotDate(slot.startAt, timezone()) }} ({{ timezone() }})</p>
+                <p><strong>{{ price(terms.priceCents, terms.currency) }}</strong> · {{ terms.durationMinutes }} min</p>
+                @if (session.user()) {
+                  <label class="booking-field">
+                    Notas (opcional)
+                    <textarea #notesInput rows="3" aria-describedby="note-guidance" [value]="notes()"
+                              (input)="changeNotes(notesInput.value)"></textarea>
+                  </label>
+                  <p id="note-guidance">Evita incluir datos sensibles. Máximo 500 caracteres. {{ noteCount() }}/500</p>
+                  <button matButton="filled" [disabled]="!online() || availabilityState() !== 'ready' || noteCount() > 500"
+                          (click)="confirm()">Confirmar reserva</button>
+                } @else if (session.status() === 'checking') {
+                  <gl-status>Comprobando sesión…</gl-status>
+                } @else {
+                  <a matButton="filled" routerLink="/acceso" [queryParams]="returnTo()">Iniciar sesión para reservar</a>
+                }
+              </section>
+            }
+          }
+        } @else {
+          <gl-status kind="empty">Todavía no hay servicios reservables.</gl-status>
+        }
+      }
+    }
+  }
+</section>

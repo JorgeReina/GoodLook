@@ -1,0 +1,33 @@
+import {lockBusiness, lockProfessionalProfiles, lockProfessionalUsers} from '../appointments/booking-locks.js';
+import {randomUUID} from 'node:crypto';
+import type {Pool,PoolConnection,RowDataPacket} from 'mysql2/promise';
+import {CatalogError, type CatalogStore, type CatalogItem, type ServiceData, type WorkPeriod} from './service.js';
+interface RoleRow extends RowDataPacket {role:string}
+interface ProfRow extends RowDataPacket {id:string;user_id:string|null}
+interface IdRow extends RowDataPacket {id:string}
+interface ItemRow extends RowDataPacket, CatalogItem {}
+interface BusinessRow extends RowDataPacket {id:string;name:string;timezone:string}
+interface HoursRow extends RowDataPacket, WorkPeriod {}
+export class MysqlCatalogStore implements CatalogStore {
+ constructor(private readonly pool:Pool){}
+ async listBusinesses(){const [rows]=await this.pool.execute<BusinessRow[]>('SELECT id,name,timezone FROM businesses WHERE is_public=1 ORDER BY name,id');return rows.map(({id,name,timezone})=>({id,name,timezone}));}
+ async list(businessId:string){const [rows]=await this.pool.execute<ItemRow[]>('SELECT s.id,s.business_id AS businessId,s.name,s.duration_minutes AS durationMinutes,s.price_cents AS priceCents,s.currency FROM services s JOIN businesses b ON b.id=s.business_id WHERE s.business_id=? AND s.active=1 AND b.is_public=1 ORDER BY s.name,s.id',[businessId]);return rows.map(({id,businessId,name,durationMinutes,priceCents,currency})=>({id,businessId,name,durationMinutes,priceCents,currency}));}
+ private async tx<T>(fn:(c:PoolConnection)=>Promise<T>):Promise<T>{const c=await this.pool.getConnection();let begun=false;try{await c.beginTransaction();begun=true;const result=await fn(c);await c.commit();begun=false;return result;}catch(e){if(begun){try{await c.rollback()}catch{}}throw e;}finally{c.release();}}
+ private async role(c:PoolConnection,business:string,actor:string){const [r]=await c.execute<RoleRow[]>("SELECT role FROM memberships WHERE business_id=? AND user_id=? AND status='active' FOR UPDATE",[business,actor]);if(!r.length)throw new CatalogError('forbidden');return r[0].role;}
+ private async admin(c:PoolConnection,business:string,actor:string){if(!['owner','admin'].includes(await this.role(c,business,actor)))throw new CatalogError('forbidden');}
+ private async professional(c:PoolConnection,b:string,p:string){const [rows]=await c.execute<ProfRow[]>('SELECT id,user_id FROM professionals WHERE business_id=? AND id=? AND active=1 FOR UPDATE',[b,p]);if(!rows.length)throw new CatalogError('not_found');return rows[0];}
+ private async lockActiveProfessional(c: PoolConnection, businessId: string, professionalId: string) {
+  const [candidates] = await c.execute<ProfRow[]>('SELECT id,user_id FROM professionals WHERE business_id=? AND id=?', [businessId, professionalId]);
+  const candidate = candidates[0];
+  if (!candidate) throw new CatalogError('not_found');
+  if (candidate.user_id) await lockProfessionalUsers(c, [candidate.user_id]);
+  const profile = (await lockProfessionalProfiles(c, businessId, [professionalId])).get(professionalId);
+  if (!profile?.active || profile.user_id !== candidate.user_id) throw new CatalogError('not_found');
+ }
+ async createBusiness(a:string,name:string,timezone:string){return this.tx(async c=>{const business={id:randomUUID(),name,timezone,isPublic:false as const};await c.execute('INSERT INTO businesses (id,name,timezone,is_public,created_at) VALUES (?,?,?,FALSE,UTC_TIMESTAMP(3))',[business.id,name,timezone]);await c.execute("INSERT INTO memberships (business_id,user_id,role,status,created_at) VALUES (?,?,'owner','active',UTC_TIMESTAMP(3))",[business.id,a]);return business;});}
+ async setVisibility(a:string,b:string,published:boolean){await this.tx(async c=>{await lockBusiness(c,b);await this.admin(c,b,a);await c.execute('UPDATE businesses SET is_public=? WHERE id=?',[published,b]);});}
+ async create(a:string,b:string,data:ServiceData):Promise<CatalogItem>{return this.tx(async c=>{await lockBusiness(c,b);await this.admin(c,b,a);const result={id:randomUUID(),businessId:b,...data};await c.execute('INSERT INTO services (id,business_id,name,duration_minutes,price_cents,currency) VALUES (?,?,?,?,?,?)',[result.id,b,data.name,data.durationMinutes,data.priceCents,data.currency]);return result;});}
+ async assign(a:string,b:string,p:string,s:string){await this.tx(async c=>{await lockBusiness(c,b);await this.admin(c,b,a);await this.lockActiveProfessional(c,b,p);const [rows]=await c.execute<IdRow[]>('SELECT id FROM services WHERE business_id=? AND id=? AND active=1 FOR UPDATE',[b,s]);if(!rows.length)throw new CatalogError('not_found');await c.execute('INSERT INTO professional_services (business_id,professional_id,service_id) VALUES (?,?,?) ON DUPLICATE KEY UPDATE active=TRUE',[b,p,s]);});}
+ async setHours(a:string,b:string,p:string,hours:WorkPeriod[]){await this.tx(async c=>{await lockBusiness(c,b);await this.admin(c,b,a);await this.lockActiveProfessional(c,b,p);await c.execute('DELETE FROM working_hours WHERE business_id=? AND professional_id=?',[b,p]);for(const h of hours)await c.execute('INSERT INTO working_hours (id,business_id,professional_id,weekday,start_time,end_time) VALUES (?,?,?,?,?,?)',[randomUUID(),b,p,h.weekday,h.startTime,h.endTime]);});}
+ async getHours(a:string,b:string,p:string){return this.tx(async c=>{const role=await this.role(c,b,a);const prof=await this.professional(c,b,p);if(!['owner','admin'].includes(role)&&!(role==='professional'&&prof.user_id===a))throw new CatalogError('forbidden');const [rows]=await c.execute<HoursRow[]>("SELECT weekday,TIME_FORMAT(start_time,'%H:%i') AS startTime,TIME_FORMAT(end_time,'%H:%i') AS endTime FROM working_hours WHERE business_id=? AND professional_id=? ORDER BY weekday,start_time",[b,p]);return rows.map(({weekday,startTime,endTime})=>({weekday,startTime,endTime}));});}
+}

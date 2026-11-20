@@ -1,0 +1,14 @@
+@use '@angular/material' as mat;
+
+html {
+  @include mat.theme((color: mat.$green-palette, density: 0));
+  @include mat.theme-overrides((
+    primary: var(--gl-accent),
+    on-primary: var(--gl-surface),
+    on-surface: var(--gl-green),
+    on-surface-variant: var(--gl-muted),
+    surface: var(--gl-surface),
+    outline: var(--gl-line),
+    error: var(--gl-error),
+  ));
+}

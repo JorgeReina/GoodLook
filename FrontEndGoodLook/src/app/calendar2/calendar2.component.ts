@@ -1,12 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroup, FormBuilder, Validators } from '@angular/forms';
 import { GoodlookService } from '../goodlook.service';
-import { User } from 'src/model/User';
+import { User } from '../../model/User';
 
 @Component({
-  selector: 'app-calendar2',
-  templateUrl: './calendar2.component.html',
-  styleUrls: ['./calendar2.component.css']
+    selector: 'app-calendar2',
+    templateUrl: './calendar2.component.html',
+    styleUrls: ['./calendar2.component.css'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class Calendar2Component implements OnInit {
 

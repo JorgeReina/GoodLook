@@ -1,0 +1,42 @@
+<main class="container py-4">
+  <h1>GoodLook: piloto de reservas</h1>
+  <p>Versión de prueba con la nueva API. La disponibilidad solo se confirma al reservar.</p>
+  @if (message) { <p role="status">{{message}}</p> }
+  @if (error) { <p role="alert">{{error}}</p> }
+  @if (!user) {
+    <section aria-labelledby="access-title">
+      <h2 id="access-title">Acceso o registro</h2>
+      <label for="pilot-name">Nombre (solo para registro)</label>
+      <input id="pilot-name" class="form-control" [(ngModel)]="name" autocomplete="name" maxlength="120">
+      <label for="pilot-email">Correo electrónico</label>
+      <input id="pilot-email" class="form-control" [(ngModel)]="email" type="email" autocomplete="email" maxlength="254">
+      <label for="pilot-password">Contraseña (mínimo 10 caracteres)</label>
+      <input id="pilot-password" class="form-control" [(ngModel)]="password" type="password" autocomplete="current-password" minlength="10" maxlength="128">
+      <button class="btn btn-primary m-1" type="button" [disabled]="busy" (click)="login()">Iniciar sesión</button>
+      <button class="btn btn-outline-primary m-1" type="button" [disabled]="busy" (click)="register()">Crear cuenta</button>
+    </section>
+  } @else {
+    <p>Sesión: {{user.displayName}}</p>
+    <button class="btn btn-outline-secondary" type="button" [disabled]="busy" (click)="logout()">Cerrar sesión</button>
+    <section aria-labelledby="reservation-title">
+      <h2 id="reservation-title">Solicitar cita</h2>
+      <label for="pilot-business">Negocio</label>
+      <select id="pilot-business" class="form-select" [(ngModel)]="businessId" (ngModelChange)="chooseBusiness()"><option value="">Selecciona un negocio</option>@for (business of businesses; track business.id) {<option [value]="business.id">{{business.name}} ({{business.timezone}})</option>}</select>
+      <label for="pilot-service">Servicio</label>
+      <select id="pilot-service" class="form-select" [(ngModel)]="serviceId" (ngModelChange)="loadAvailability()"><option value="">Selecciona un servicio</option>@for (service of services; track service.id) {<option [value]="service.id">{{service.name}} — {{service.durationMinutes}} min — {{service.priceCents / 100 | currency:service.currency}}</option>}</select>
+      <label for="pilot-professional">Profesional</label>
+      <select id="pilot-professional" class="form-select" [(ngModel)]="professionalId" (ngModelChange)="loadAvailability()"><option value="">Selecciona un profesional</option>@for (professional of professionals; track professional.id) {<option [value]="professional.id">{{professional.displayName}}</option>}</select>
+      <p>Horarios para los próximos siete días en la zona del negocio: <strong>{{availability?.timezone || businessTimezone || 'selecciona un negocio'}}</strong>.</p>
+      @if (loadingAvailability) { <p role="status">Consultando horarios disponibles…</p> }
+      @if (availability && !availability.slots.length) { <p role="status">No hay horarios disponibles en los próximos siete días.</p> }
+      <label for="pilot-slot">Horario disponible</label>
+      <select id="pilot-slot" class="form-select" [(ngModel)]="selectedSlot" [disabled]="loadingAvailability || !availability?.slots?.length"><option value="">Selecciona un horario</option>@for (slot of availability?.slots || []; track slot.startAt) {<option [value]="slot.startAt">{{formatSlot(slot.startAt)}}</option>}</select>
+      <button class="btn btn-outline-secondary mt-2" type="button" [disabled]="loadingAvailability || !businessId || !professionalId || !serviceId" (click)="loadAvailability()">Actualizar horarios</button>
+      <p>La selección no garantiza la disponibilidad; la cita se confirma al recibir la respuesta del servidor.</p>
+      <label for="pilot-notes">Nota opcional</label>
+      <textarea id="pilot-notes" class="form-control" [(ngModel)]="notes" maxlength="500"></textarea>
+      <button class="btn btn-primary mt-2" type="button" [disabled]="busy" (click)="reserve()">Solicitar cita</button>
+    </section>
+    <section aria-labelledby="appointments-title"><h2 id="appointments-title">Mis próximas citas</h2><button class="btn btn-outline-primary" type="button" [disabled]="busy" (click)="listAppointments()">Cargar próximos 30 días</button><ul>@for (appointment of appointments; track appointment.id) {<li>{{appointment.startAt | date:'medium':'UTC'}} UTC — {{appointment.status}} — {{appointment.priceCents / 100 | currency:appointment.currency}}</li>}</ul></section>
+  }
+</main>

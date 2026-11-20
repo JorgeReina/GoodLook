@@ -1,11 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { GoodlookService } from '../goodlook.service';
-import { User } from 'src/model/User';
+import { User } from '../../model/User';
 
 @Component({
-  selector: 'app-datelist',
-  templateUrl: './datelist.component.html',
-  styleUrls: ['./datelist.component.css']
+    selector: 'app-datelist',
+    templateUrl: './datelist.component.html',
+    styleUrls: ['./datelist.component.css'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class DatelistComponent implements OnInit {
 

@@ -1,0 +1,39 @@
+<section aria-label="Calendario semanal">
+  <div class="gl-actions">
+    <button type="button" (click)="move(-1)">Semana anterior</button>
+    <button type="button" (click)="move(1)">Semana siguiente</button>
+    <button type="button" [attr.aria-pressed]="grid()" (click)="grid.set(!grid())">{{ grid() ? 'Vista en lista' : 'Vista en cuadrícula' }}</button>
+  </div>
+  <p aria-live="polite">Semana de {{ displayDay(week()) }} · {{ timezone() }}</p>
+  @let result = state();
+  @switch (result.kind) {
+    @case ('loading') { <gl-status>Cargando agenda…</gl-status> }
+    @case ('error') {
+      <gl-status kind="error">No se pudo cargar la agenda.</gl-status>
+      <button type="button" (click)="retry()">Volver a intentar</button>
+    }
+    @case ('ready') {
+      @if (!result.agenda.appointments.length) { <gl-status kind="empty">No hay citas esta semana.</gl-status> }
+      <div class="gl-week" [class.gl-week-grid]="grid()">
+        @for (day of days(); track day.day) {
+          <section class="gl-work-panel">
+            <h3>{{ displayDay(day.day) }}</h3>
+            @for (hour of day.hours; track $index) { <p>Horario · {{ hour.startTime }}–{{ hour.endTime }}</p> }
+            @for (closure of day.closures; track closure.id) {
+              <p>Cierre · {{ displayInstant(closure.startAt, result.agenda.timezone) }}–{{ displayInstant(closure.endAt, result.agenda.timezone) }}</p>
+            }
+            @for (item of day.appointments; track item.id) {
+              <article class="gl-appointment">
+                <strong>{{ item.serviceName }} · {{ item.customerName }}</strong>
+                <p>{{ displayInstant(item.startAt, result.agenda.timezone) }}–{{ displayInstant(item.endAt, result.agenda.timezone) }}</p>
+                <p>{{ appointmentStates[item.status] ?? item.status }}</p>
+                @if (item.notes) { <p>{{ item.notes }}</p> }
+              </article>
+            }
+            @if (!day.hours.length && !day.closures.length && !day.appointments.length) { <p>Sin actividad.</p> }
+          </section>
+        }
+      </div>
+    }
+  }
+</section>

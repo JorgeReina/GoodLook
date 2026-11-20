@@ -37,6 +37,26 @@
             "ngswConfigPath": "ngsw-config.json"
           },
           "configurations": {
+            "product": {
+              "main": "src/main.product.ts",
+              "index": { "input": "src/index.product.html", "output": "index.html" },
+              "tsConfig": "tsconfig.product.json",
+              "outputPath": "dist/front-end-good-look/producto",
+              "baseHref": "/producto/",
+              "polyfills": [],
+              "assets": [
+                "src/manifest.product.webmanifest",
+                { "glob": "*.png", "input": "src/assets/product/icons", "output": "assets/product/icons" }
+              ],
+              "styles": ["src/material.product.scss", "src/styles.product.css"],
+              "scripts": [],
+              "serviceWorker": true,
+              "ngswConfigPath": "ngsw-product.json",
+              "outputHashing": "all",
+              "optimization": { "scripts": true, "styles": true, "fonts": false }
+            },
+            "product-dev": { "baseHref": "/", "serviceWorker": false, "optimization": false },
+            "pilot": { "main": "src/main.pilot.ts", "index": { "input": "src/index.pilot.html", "output": "index.html" }, "tsConfig": "tsconfig.pilot.json", "serviceWorker": false, "outputHashing": "all", "optimization": { "scripts": true, "styles": true, "fonts": false } },
             "production": {
               "budgets": [
                 {
@@ -50,7 +70,12 @@
                   "maximumError": "4kb"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": true,
+                "fonts": false
+              }
             },
             "development": {
               "buildOptimizer": false,
@@ -66,11 +91,15 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
+            "product": {
+              "buildTarget": "FrontEndGoodLook:build:product,product-dev",
+              "proxyConfig": "proxy.pilot.json"
+            },
             "production": {
-              "browserTarget": "FrontEndGoodLook:build:production"
+              "buildTarget": "FrontEndGoodLook:build:production"
             },
             "development": {
-              "browserTarget": "FrontEndGoodLook:build:development"
+              "buildTarget": "FrontEndGoodLook:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -78,7 +107,7 @@
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "FrontEndGoodLook:build"
+            "buildTarget": "FrontEndGoodLook:build"
           }
         },
         "test": {
@@ -101,6 +130,32 @@
           }
         }
       }
+    }
+  },
+  "schematics": {
+    "@schematics/angular:component": {
+      "type": "component"
+    },
+    "@schematics/angular:directive": {
+      "type": "directive"
+    },
+    "@schematics/angular:service": {
+      "type": "service"
+    },
+    "@schematics/angular:guard": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:interceptor": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:module": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:pipe": {
+      "typeSeparator": "."
+    },
+    "@schematics/angular:resolver": {
+      "typeSeparator": "."
     }
   }
 }
