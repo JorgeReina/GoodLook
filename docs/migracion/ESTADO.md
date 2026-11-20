@@ -1,5 +1,7 @@
 # Estado de migración GoodLook
 
+> **Aviso.** Este archivo es un registro histórico de la migración. El diario se conserva en el tiempo verbal de cada jornada. Las frases en presente sobre el frontend que ya no describen el estado actual están marcadas con **[histórico]**. El estado vigente del frontend está en [FrontEndGoodLook/README.md](../../FrontEndGoodLook/README.md). La decisión del [issue #17](https://github.com/JorgeReina/GoodLook/issues/17) deja la aplicación heredada congelada e histórica, sin borrarla, y mantiene `/piloto` durante el corte como entrada temporal. El borrado queda en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34).
+
 Fecha: 2026-11-15. Base: commit ce0a9b0107edbfe61a8b012fdd8a0712edf93f36.
 
 ## Contexto confirmado
@@ -12,7 +14,7 @@ Se definen agentes de proyecto en `.codex/agents/` para Project Manager, develop
 
 ## Evaluación inicial
 
-- Frontend: Angular 16 basado en NgModules y builder antiguo; formularios y flujos existentes útiles como referencia. La comparación migración incremental frente a nueva aplicación sigue pendiente de una prueba de compilación y actualización.
+- Frontend: Angular 16 **[histórico]** basado en NgModules y builder antiguo; formularios y flujos existentes útiles como referencia. La comparación migración incremental frente a nueva aplicación sigue pendiente de una prueba de compilación y actualización **[histórico]**.
 - API antigua: datos de prueba, sin necesidad de conservar contraseñas o compatibilidad insegura. Debe reemplazarse gradualmente sin conectar la nueva API a producción.
 - QA: priorizar alta/acceso, roles, reservas, agenda y pruebas negativas de acceso entre usuarios, exposición de hashes y dobles reservas simultáneas.
 - UX: corregir etiquetas de formularios, confirmaciones y estados de error; en fase posterior diseñar interfaz móvil y agenda accesibles.
@@ -40,13 +42,13 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - Citas: validación de disponibilidad, bloqueo transaccional propuesto y comprobación de solapamientos; soporte para cierre a medianoche. Todas las operaciones que alteran disponibilidad tendrán que respetar el mismo protocolo; todavía no se ha verificado una carrera real.
 - Backend anterior: eliminación de hashes en respuestas y controles de identidad sobre perfil, agendas y creación de cita. Compilación y pruebas de controladores/JWT pasan; no hay prueba HTTP completa, y las sesiones anteriores deberán iniciar sesión de nuevo. Continúan pendientes listado global de usuarios, competencia entre reservas y configuración de JWT/CORS. Estas correcciones no se han desplegado.
 - Verificaciones: API 34 tests, typecheck y build; migraciones 6 tests simulados; backend .NET 10 verificaciones de regresión. No hay pruebas de integración MySQL ni E2E completas.
-- Frontend: migración incremental de Angular 16 a 21.2.26; build correcto en Node 24 con avisos NG8107 y presupuestos de tamaño. La actualización a Angular 22 sigue pendiente; no se han ejecutado pruebas de navegador. El frontend sigue conectado al backend legado y no utiliza todavía la API nueva.
+- Frontend: migración incremental de Angular 16 a 21.2.26; build correcto en Node 24 con avisos NG8107 y presupuestos de tamaño. La actualización a Angular 22 sigue pendiente **[histórico]**; no se han ejecutado pruebas de navegador **[histórico]**. El frontend sigue conectado al backend legado y no utiliza todavía la API nueva **[histórico]**.
 - Las rutas de profesionales crean perfiles sin cuenta vinculada; aún no hay invitación de empleados, CRUD de servicios/horarios ni recorrido completo de reserva desde el frontend.
 
 ## Avance posterior: 15-11-2026
 
-- Angular actualizado a 22.2.6 y CLI 22.2.7; instalación y compilación pasan en Node 24 con avisos del builder Webpack obsoleto y presupuesto de tamaño. Karma sigue sin arrancar Chromium en este entorno. Los diagnósticos opcionales suprimidos por la migración oficial deben revisarse.
-- Ruta `/piloto` aislada conecta la API nueva con cookies mediante proxy de mismo origen; registro, acceso, catálogo, reserva y citas propias. Es un piloto técnico, no está validado en navegador ni es adecuado para clientes: fecha UTC manual, sin selector de huecos ni coincidencia filtrada por profesional/servicio. Consultar `FrontEndGoodLook/PILOTO.md`.
+- Angular actualizado a 22.2.6 y CLI 22.2.7; instalación y compilación pasan en Node 24 con avisos del builder Webpack obsoleto y presupuesto de tamaño. Karma sigue sin arrancar Chromium en este entorno **[histórico]**. Los diagnósticos opcionales suprimidos por la migración oficial deben revisarse.
+- Ruta `/piloto` aislada conecta la API nueva con cookies mediante proxy de mismo origen; registro, acceso, catálogo, reserva y citas propias. Es un piloto técnico, no está validado en navegador **[histórico]** ni es adecuado para clientes: fecha UTC manual, sin selector de huecos ni coincidencia filtrada por profesional/servicio **[histórico]**. Consultar `FrontEndGoodLook/PILOTO.md`.
 - API: alta de negocio privado con propietario; publicación explícita; creación de profesionales e invitaciones de un uso aceptadas por cuenta; alta/asignación de servicios y horarios; listado de citas propias. Invitaciones son transferibles, entrega manual; actualmente una cuenta solo puede vincularse a un perfil profesional globalmente. No se prueban carreras reales y faltan edición/desactivación, excepciones de horario, revocación e interfaz administrativa completa.
 - Pruebas de API: 65 pasan, más 6 del ejecutor con simulaciones; typecheck y build pasan. Se ha añadido suite de integración con MySQL 8 y carrera de dos reservas en Docker aislado; no se pudo ejecutar porque no hay Docker. No se han probado contra MySQL real ni E2E.
 - Publicación: propietario autoriza publicar; el proveedor legado usa perfiles IIS/MSDeploy y FTP sin conexión de publicación disponible aquí. No se ha modificado el servidor. Hay perfiles de usuario versionados con material cifrado; comprobar vigencia, rotar credenciales afectadas si procede y planificar limpieza segura, sin publicar valores.
@@ -55,12 +57,12 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 
 - Se añade consulta pública de disponibilidad para negocio publicado, profesional y servicio activos y asociados, con horarios IANA y huecos orientativos; la creación sigue validando de forma transaccional. No se han comprobado consultas ni concurrencia con MySQL real.
 - Registro e inicio de sesión incorporan un limitador MySQL compartido y `AUTH_LIMIT_SECRET` obligatorio. Sus límites son preliminares: tras un proxy la IP de socket puede ser común, por lo que antes de desplegar se requieren controles en el borde, calibración y limpieza de contadores.
-- El piloto incorpora selector de fecha/hora en zona local del dispositivo, conversión a UTC y rechazo de cambios de hora ambiguos o inexistentes. Sigue pendiente conectar la selección de huecos, pruebas visuales, y verificar el recorrido real.
+- El piloto incorpora selector de fecha/hora en zona local del dispositivo, conversión a UTC y rechazo de cambios de hora ambiguos o inexistentes. Sigue pendiente conectar la selección de huecos, pruebas visuales, y verificar el recorrido real **[histórico]**.
 - Verificación de esta revisión: 78 pruebas del backend y 6 del ejecutor de migraciones con dependencias simuladas, comprobación de tipos y compilación correctas. MySQL real y navegador continúan pendientes.
 
 ## Continuación: disponibilidad y protección
 
-- El piloto consulta huecos orientativos para siete días, muestra la zona del negocio y el desfase, descarta respuestas antiguas y exige elegir un hueco devuelto antes de reservar. Se invalida el hueco si el servidor devuelve conflicto. Las pruebas de lógica y la compilación se han realizado; la prueba visual de navegador sigue pendiente.
+- El piloto consulta huecos orientativos para siete días, muestra la zona del negocio y el desfase, descarta respuestas antiguas y exige elegir un hueco devuelto antes de reservar. Se invalida el hueco si el servidor devuelve conflicto. Las pruebas de lógica y la compilación se han realizado; la prueba visual de navegador sigue pendiente **[histórico]**.
 - La consulta de huecos une intervalos ocupados, limita volumen y aplica control compartido de 30 consultas/minuto por IP del socket. La autenticación limita primero por IP y evita crear contadores de identidad cuando ya se ha excedido; se dispone de limpieza por lotes de entradas antiguas.
 - Estos límites requieren configuración del proxy y limpieza programada; una IP compartida afecta a varios usuarios. No son protección suficiente contra tráfico distribuido. No se han ejecutado pruebas con MySQL real y el cálculo de disponibilidad es orientativo hasta confirmar la reserva.
 
@@ -122,8 +124,8 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 ## Reservas concurrentes y carcasa Angular (19-11-2026)
 
 - Tarea 3. El protocolo serializa reservas de la misma cuenta profesional entre locales y usa la clave idempotente del cliente para recuperar el resultado de un reintento. La 006 añade cierres, asignaciones activas e historial de solicitudes. Pasaron 93 pruebas de API, 33 de base de datos y tres integraciones por motor en MySQL 8.4.13 y MariaDB 10.11.19. Las pruebas contra cambios de configuración usaron transacciones SQL. Se repetirán con las rutas de Gestión en la tarea 4.
-- Tarea 7. La carcasa Material/CDK compila como producto independiente. Incluye acceso, registro y navegación por pertenencia, con catálogo preliminar. Pasaron ocho pruebas de producto en Chrome. La suite general presenta los seis fallos legados reproducidos en la base del cambio. Las pantallas de reserva, agenda, gestión e invitación continúan en las tareas posteriores.
-- Para publicar la tanda, servir la carcasa en `/producto/` y el piloto en `/piloto`. La API es del mismo origen. La compilación genera primero el piloto y después el producto en un subdirectorio. Mantener `/api` y los recursos estáticos fuera del fallback de navegación. La instalación PWA y el corte de la entrada principal siguen en el plan posterior.
+- Tarea 7. La carcasa Material/CDK compila como producto independiente. Incluye acceso, registro y navegación por pertenencia, con catálogo preliminar. Pasaron ocho pruebas de producto en Chrome. La suite general presenta los seis fallos legados reproducidos en la base del cambio. Las pantallas de reserva, agenda, gestión e invitación continúan en las tareas posteriores **[histórico]**.
+- Para publicar la tanda, servir la carcasa en `/producto/` y el piloto en `/piloto`. La API es del mismo origen. La compilación genera primero el piloto y después el producto en un subdirectorio. Mantener `/api` y los recursos estáticos fuera del fallback de navegación. La instalación PWA y el corte de la entrada principal siguen en el plan posterior **[histórico]**.
 - Antes de promover, verificar copia lógica y restauración aislada, así como el historial y TLS de MonsterASP. Aplicar únicamente 005 y 006 tras verificar los checksums de 001–004. Si hubiera que volver a una versión anterior del backend tras activar escrituras dependientes de 006, detener las reservas afectadas antes de volver al código que ignora las reglas nuevas. La reversión de Vercel conserva el esquema aditivo.
 
 ## Recorridos conectados y carreras de Gestión (20-11-2026)
@@ -131,7 +133,7 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - Se completaron las tareas 4, 5 y 8–10. En `/producto/` funcionan el catálogo y la reserva con Mis citas, la agenda semanal, las invitaciones de un solo uso y Gestión de negocios, servicios, profesionales, horarios y cierres.
 - En Chrome y MySQL desechable se verificaron una ficha privada, la introducción de precio, el vínculo por invitación, la publicación, la reserva del cliente, su consulta tras recargar y su aparición en la agenda profesional. También se comprobó que el aviso de impacto recibe el foco, que los campos se bloquean mientras está pendiente y que confirmar el cierre conserva la cita.
 - Pasaron 105 pruebas de API, 33 de base de datos, 17 de producto en Chrome y los builds de backend, piloto y producto. Pasaron cinco integraciones por motor en MySQL 8.4.13 y MariaDB 10.11.19, incluidas carreras HTTP de Gestión y aceptación concurrente de invitaciones. [Contrato y verificación de reservas](RESERVAS.md).
-- Esta tanda usa el esquema 006 existente. La verificación se realizó en Docker local sin cambios en bases remotas. La instalación PWA y el empaquetado final de entrega siguen en las tareas 11–12.
+- Esta tanda usa el esquema 006 existente. La verificación se realizó en Docker local sin cambios en bases remotas. La instalación PWA y el empaquetado final de entrega siguen en las tareas 11–12 **[histórico]**.
 
 ## PWA y paquete de entrega (20-11-2026)
 
