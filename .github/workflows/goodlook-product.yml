@@ -57,4 +57,12 @@ jobs:
           bash ./scripts/test-mysql-integration.sh mariadb
       - name: Product browser acceptance
         working-directory: FrontEndGoodLook
-        run: npm run test:e2e
+        run: |
+          set +e
+          export GOODLOOK_PORT_INSPECT_LOG="${RUNNER_TEMP:-/tmp}/goodlook-ports.log"
+          : > "$GOODLOOK_PORT_INSPECT_LOG"
+          npm run test:e2e
+          status=$?
+          echo '--- NetworkSettings.Ports observado por el arnés ---'
+          cat "$GOODLOOK_PORT_INSPECT_LOG"
+          exit "$status"
