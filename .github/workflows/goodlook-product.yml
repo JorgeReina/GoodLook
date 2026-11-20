@@ -1,0 +1,52 @@
+name: GoodLook product checks
+
+on:
+  push:
+    branches: [main, work/goodlook-migracion]
+  pull_request:
+    branches: [main, work/goodlook-migracion]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend-node/package-lock.json
+            FrontEndGoodLook/package-lock.json
+      - name: Build pilot and product
+        run: npm run build
+      - name: Build and test the API
+        working-directory: backend-node
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+          npm test
+          node --test db/tests/*.test.mjs
+      - name: Install Chromium
+        working-directory: FrontEndGoodLook
+        run: npx playwright install --with-deps chromium
+      - name: Test Angular product
+        working-directory: FrontEndGoodLook
+        run: |
+          export CHROME_BIN="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
+          npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts'
+      - name: MySQL and MariaDB integration
+        working-directory: backend-node
+        run: |
+          bash ./scripts/test-mysql-integration.sh mysql
+          bash ./scripts/test-mysql-integration.sh mariadb
+      - name: Product browser acceptance
+        working-directory: FrontEndGoodLook
+        run: npm run test:e2e
