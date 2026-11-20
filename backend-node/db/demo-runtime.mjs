@@ -62,9 +62,19 @@ function assertComposeConfig(config, project, image) {
 }
 
 function hasLoopbackBinding(ports) {
-  const bindings = ports?.['3306/tcp'];
-  return ports && Object.keys(ports).length === 1 && Array.isArray(bindings) &&
-    bindings.length === 1 && bindings[0]?.HostIp === '127.0.0.1' && bindings[0].HostPort === '33317';
+  if (!ports || typeof ports !== 'object') return false;
+  const published = [];
+  for (const [port, bindings] of Object.entries(ports)) {
+    // An image EXPOSE without --publish is null. It is not a host binding.
+    if (bindings == null) continue;
+    if (!Array.isArray(bindings)) return false;
+    for (const binding of bindings) published.push([port, binding]);
+  }
+  const mysql = published.filter(([port]) => port === '3306/tcp');
+  const loopback = new Set(['127.0.0.1', '::1']);
+  return published.length === mysql.length && mysql.length > 0 &&
+    mysql.every(([, binding]) => loopback.has(binding?.HostIp) && binding.HostPort === '33317') &&
+    mysql.some(([, binding]) => binding.HostIp === '127.0.0.1');
 }
 
 function inspectContainer(record) {
