@@ -3,7 +3,27 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "FrontEndGoodLook/dist/front-end-good-look",
-  "redirects": [ { "source": "/", "destination": "/piloto", "permanent": false } ],
+  "redirects": [ { "source": "/", "destination": "/producto/", "permanent": false } ],
+  "headers": [
+    {
+      "source": "/producto/ngsw-worker.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Service-Worker-Allowed", "value": "/producto/" }
+      ]
+    },
+    {
+      "source": "/producto/ngsw.json",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+    },
+    {
+      "source": "/producto/manifest.product.webmanifest",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" },
+        { "key": "Content-Type", "value": "application/manifest+json" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/piloto", "destination": "/index.html" },
