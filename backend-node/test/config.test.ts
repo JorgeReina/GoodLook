@@ -11,4 +11,5 @@ test('local plaintext requires explicit opt-in', () => {
   const local = {...base, DATABASE_URL:'mysql://u:p@127.0.0.1/db'};
   assert.throws(() => loadConfig(local), /TLS/);
   assert.equal(loadConfig({...local, MYSQL_ALLOW_INSECURE_LOCAL:'true'}).tls, false);
+  assert.equal(loadConfig({...local, MYSQL_ALLOW_INSECURE_LOCAL:'true'}).dataRole, 'development');
 });

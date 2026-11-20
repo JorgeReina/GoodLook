@@ -13,7 +13,7 @@ try {
   await inspectTarget(connection);
   const lock = `goodlook:migrate:${createHash('sha256').update(config.database).digest('hex').slice(0, 40)}`;
   await applyMigrations(connection, migrations, lock);
-  console.log('Verified test database and applied MariaDB migrations.');
+  console.log('Applied MariaDB migrations to the pinned database.');
 } catch {
   // Do not print driver errors, connection strings, or credentials.
   console.error('Test database migration failed. Inspect the target state before retrying; DDL may be partially applied.');

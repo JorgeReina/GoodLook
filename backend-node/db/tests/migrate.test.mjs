@@ -67,6 +67,29 @@ test('failed DDL leaves a durable applying marker and blocks retry', async () =>
   await assert.rejects(() => applyMigrations(conn, [item], 'testlock'), /Interrupted/);
 });
 
+test('preview migrations accept another database and refuse the production identity', () => {
+  const preview = { ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: 'mysql://preview_user:secret@db99999.public.databaseasp.net/db99999', MYSQL_TLS: 'true', MYSQL_ALLOW_INSECURE_LOCAL: undefined };
+  assert.equal(parseConfig(preview).database, 'db99999');
+  const productionUrl = 'mysql://db80496:super-secret-preview@db80496.public.databaseasp.net/db80496';
+  for (const target of ['test', 'development', 'preview']) {
+    assert.throws(() => parseConfig({
+      ...base,
+      GOODLOOK_MIGRATION_TARGET: target,
+      DATABASE_URL: productionUrl,
+      MYSQL_TLS: 'true',
+      GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS: 'YES',
+    }), error => error instanceof Error && /production database identity/.test(error.message) && !error.message.includes('super-secret-preview'));
+  }
+  assert.throws(() => parseConfig({ ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: 'mysql://preview_user:secret@other.example.test/db80496', MYSQL_TLS: 'true' }), /production database identity/);
+  assert.equal(parseConfig({
+    ...base,
+    GOODLOOK_MIGRATION_TARGET: 'production',
+    DATABASE_URL: productionUrl,
+    MYSQL_TLS: 'true',
+    GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS: 'YES',
+  }).database, 'db80496');
+});
+
 test('requires verified TLS except explicitly permitted loopback', () => {
   assert.throws(() => parseConfig({ ...base, MYSQL_ALLOW_INSECURE_LOCAL: undefined }), /TLS/);
   assert.throws(() => parseConfig({ ...base, DATABASE_URL: 'mysql://user:pass@db.example.test/goodlook_test' }), /TLS/);
