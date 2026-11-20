@@ -46,6 +46,8 @@ for (const [label, simulation, reason] of [
   ['remote Docker endpoint', { endpoint: 'tcp://192.0.2.10:2376' }, /local Docker socket/],
   ['persistent storage mount', { change: container => { container.Mounts = [{ Type: 'volume', Destination: '/var/lib/mysql' }]; } }, /container identity/],
   ['nonloopback published port', { change: container => { container.NetworkSettings.Ports['3306/tcp'][0].HostIp = '0.0.0.0'; } }, /publish the expected loopback/],
+  ['public address beside loopback', { change: container => { container.NetworkSettings.Ports['3306/tcp'].push({ HostIp: '0.0.0.0', HostPort: '33317' }); } }, /publish the expected loopback/],
+  ['IPv6 loopback without IPv4', { change: container => { container.NetworkSettings.Ports['3306/tcp'][0].HostIp = '::1'; } }, /publish the expected loopback/],
 ]) {
   test('rejects ' + label + ' before granting access to the database', async t => {
     mockDocker(t, simulation);
@@ -54,6 +56,13 @@ for (const [label, simulation, reason] of [
     assert.equal(work.mock.callCount(), 0);
   });
 }
+
+test('accepts the IPv6 loopback binding Docker adds beside 127.0.0.1', async t => {
+  mockDocker(t, { change: container => { container.NetworkSettings.Ports['3306/tcp'].push({ HostIp: '::1', HostPort: '33317' }); } });
+  const work = t.mock.fn(async () => 'ready');
+  assert.equal(await withNewDemo('mysql', work), 'ready');
+  assert.equal(work.mock.callCount(), 1);
+});
 
 test('a pre-existing generated project is neither adopted nor cleaned up', async t => {
   const operations = mockDocker(t, { preexisting: true });
