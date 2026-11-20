@@ -10,11 +10,11 @@ npm run build
 npm start
 ```
 
-`PORT` es opcional; el valor por defecto es 3000. No configurar credenciales en este repositorio.
+`PORT` es opcional; el valor por defecto es 3000. No configurar credenciales en este repositorio. El ejemplo local está en `.env.example`. La separación de preview y producción, y la regla de no exportar `VERCEL`, están en [docs/migracion/ENTORNOS.md](../docs/migracion/ENTORNOS.md).
 
 ## Identidad (en desarrollo)
 
-Para iniciar la API con identidad es obligatorio establecer `APP_ORIGIN` (origen HTTPS exacto de la aplicación, sin barra final; HTTP solo en localhost) y `DATABASE_URL` (`mysql://usuario:contraseña@servidor:3306/base`). El servicio requiere el esquema de `users` y `auth_sessions` de la migración MySQL. `MYSQL_TLS=true` exige TLS con validación del certificado para la conexión MySQL. Se rechaza cualquier conexión sin TLS, salvo `localhost`, `127.0.0.1` o `::1` cuando `MYSQL_ALLOW_INSECURE_LOCAL=true` se establece explícitamente para desarrollo. No incluyas valores reales en Git ni en registros. Esta configuración inicial está orientada a servir frontend y API bajo el mismo origen; no añade CORS para orígenes cruzados.
+Para iniciar la API con identidad es obligatorio establecer `APP_ORIGIN` (origen HTTPS exacto de la aplicación, sin barra final; HTTP solo en localhost) y `DATABASE_URL` (`mysql://usuario:contraseña@servidor:3306/base`). El servicio requiere el esquema de `users` y `auth_sessions` de la migración MySQL. `MYSQL_TLS=true` exige TLS con validación del certificado para la conexión MySQL. Se rechaza cualquier conexión sin TLS, salvo `localhost`, `127.0.0.1` o `::1` cuando `MYSQL_ALLOW_INSECURE_LOCAL=true` se establece explícitamente para desarrollo. Con `GOODLOOK_DATA_ENV=preview` o `VERCEL_ENV=preview`, el proceso se niega a abrir el host, el nombre o el usuario de la base `db80496`. `VERCEL=1` sin `VERCEL_ENV=production` tampoco puede abrirla. No definas `VERCEL` ni `VERCEL_ENV` en local, Docker ni CI: las inyecta Vercel. No incluyas valores reales en Git ni en registros. Esta configuración inicial está orientada a servir frontend y API bajo el mismo origen; no añade CORS para orígenes cruzados.
 
 `POST /api/auth/register` admite `email`, `password` (10–128 caracteres) y `displayName`. `POST /api/auth/login` crea una cookie Secure, HttpOnly y SameSite=Strict con sesión de 24 horas; el servidor guarda solo el hash del token. `GET /api/auth/me` identifica al usuario de la sesión y `POST /api/auth/logout` la revoca. Las solicitudes POST requieren cabecera Origin que coincida exactamente con APP_ORIGIN. Las contraseñas se guardan como hash scrypt con sal aleatoria.
 
