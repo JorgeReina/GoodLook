@@ -40,7 +40,15 @@ jobs:
       - name: Test Angular product
         working-directory: FrontEndGoodLook
         run: |
-          export CHROME_BIN="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
+          export GOODLOOK_CHROMIUM_PATH="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
+          # The hosted runner blocks Chromium's unprivileged namespaces.
+          export CHROME_BIN="$(mktemp)"
+          trap 'rm -f "$CHROME_BIN"' EXIT
+          cat > "$CHROME_BIN" <<'EOF'
+          #!/bin/sh
+          exec "$GOODLOOK_CHROMIUM_PATH" --no-sandbox "$@"
+          EOF
+          chmod +x "$CHROME_BIN"
           npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts'
       - name: MySQL and MariaDB integration
         working-directory: backend-node
