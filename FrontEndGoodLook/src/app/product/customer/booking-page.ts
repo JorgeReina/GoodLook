@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { forkJoin, type Subscription } from 'rxjs';
 import type { PublicBusiness } from '../api/contracts';
+import { ProductConnection } from '../install/connection.service';
 import { SessionService } from '../session.service';
 import { StatusMessage } from '../shared/status-message';
 import { type Attempt, BookingDraft } from './booking-draft';
@@ -26,6 +27,7 @@ export class BookingPage {
   private readonly destroy = inject(DestroyRef);
   private readonly drafts = inject(BookingDraft);
   protected readonly session = inject(SessionService);
+  protected readonly online = inject(ProductConnection).online;
   protected readonly draft = this.drafts.value.asReadonly();
   protected readonly businessId = signal('');
   protected readonly business = signal<PublicBusiness | null>(null);
@@ -209,7 +211,7 @@ export class BookingPage {
   protected confirm() {
     const draft = this.draft();
     const user = this.session.user();
-    if (!user || !draft || this.submitting()) return;
+    if (!user || !draft || !this.online() || this.submitting()) return;
 
     let attempt = draft.attempt;
     if (attempt && attempt.userId !== user.id) return;

@@ -42,14 +42,20 @@
               "index": { "input": "src/index.product.html", "output": "index.html" },
               "tsConfig": "tsconfig.product.json",
               "outputPath": "dist/front-end-good-look/producto",
+              "baseHref": "/producto/",
               "polyfills": [],
-              "assets": [],
+              "assets": [
+                "src/manifest.product.webmanifest",
+                { "glob": "*.png", "input": "src/assets/product/icons", "output": "assets/product/icons" }
+              ],
               "styles": ["src/material.product.scss", "src/styles.product.css"],
               "scripts": [],
-              "serviceWorker": false,
+              "serviceWorker": true,
+              "ngswConfigPath": "ngsw-product.json",
               "outputHashing": "all",
               "optimization": { "scripts": true, "styles": true, "fonts": false }
             },
+            "product-dev": { "baseHref": "/", "serviceWorker": false, "optimization": false },
             "pilot": { "main": "src/main.pilot.ts", "index": { "input": "src/index.pilot.html", "output": "index.html" }, "tsConfig": "tsconfig.pilot.json", "serviceWorker": false, "outputHashing": "all", "optimization": { "scripts": true, "styles": true, "fonts": false } },
             "production": {
               "budgets": [
@@ -86,7 +92,7 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "product": {
-              "buildTarget": "FrontEndGoodLook:build:product",
+              "buildTarget": "FrontEndGoodLook:build:product,product-dev",
               "proxyConfig": "proxy.pilot.json"
             },
             "production": {

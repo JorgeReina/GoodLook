@@ -25,6 +25,17 @@
 </header>
 
 <main id="contenido" #main tabindex="-1" class="gl-main">
+  @if (updates.ready()) {
+    <div class="gl-session-notice">
+      <gl-status>Hay una actualización de GoodLook disponible.</gl-status>
+      @if (updates.blocked()) {
+        <p>Resuelve la solicitud de reserva pendiente antes de actualizar.</p>
+      } @else if (updates.hasSelection()) {
+        <p>Al actualizar se perderá la selección de reserva de esta ventana.</p>
+      }
+      <button matButton="outlined" type="button" (click)="updates.reload()" [disabled]="updates.blocked()">Actualizar GoodLook</button>
+    </div>
+  }
   @if (!online()) {
     <gl-status>Estás sin conexión. Algunas funciones no están disponibles.</gl-status>
   } @else if (session.status() === 'unavailable') {
