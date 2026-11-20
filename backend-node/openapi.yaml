@@ -336,10 +336,10 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/WorkPeriod' }
-        '400': { $ref: '#/components/responses/CatalogError' }
+        '400': { $ref: '#/components/responses/ScheduleInvalid' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/CatalogForbidden' }
-        '404': { $ref: '#/components/responses/CatalogError' }
+        '404': { $ref: '#/components/responses/ScheduleNotFound' }
     put:
       tags: [catalogo-piloto]
       operationId: putApiSchedules
@@ -368,10 +368,10 @@ paths:
       responses:
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '204': { description: Horario sustituido. }
-        '400': { $ref: '#/components/responses/CatalogError' }
+        '400': { $ref: '#/components/responses/ScheduleInvalid' }
         '401': { $ref: '#/components/responses/UnauthorizedError' }
         '403': { $ref: '#/components/responses/CatalogForbidden' }
-        '404': { $ref: '#/components/responses/CatalogError' }
+        '404': { $ref: '#/components/responses/ScheduleNotFound' }
         '409': { $ref: '#/components/responses/ManagementConflict' }
   /api/professionals:
     get:
@@ -1307,6 +1307,31 @@ components:
             required: [error]
             properties:
               error: { type: string, enum: ['Service unavailable'] }
+    ScheduleInvalid:
+      description: |
+        Identificador que no es un UUID, o franja inválida en el `PUT`.
+        `catalog/routes.ts` responde `{ "error": "invalid" }`. En el proceso
+        real el `PUT` pasa por gestión y traduce `invalid_input` a ese mismo
+        `error`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: [invalid] }
+    ScheduleNotFound:
+      description: |
+        El profesional no existe o no está activo en ese negocio.
+        La ruta responde `{ "error": "not_found" }`, tanto si el error sale
+        de `CatalogError` como de `ManagementError`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: [not_found] }
     CatalogError:
       description: Error del catálogo de piloto. `error` es `invalid`, `forbidden` o `not_found`.
       content:
