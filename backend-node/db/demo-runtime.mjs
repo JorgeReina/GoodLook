@@ -63,15 +63,8 @@ function assertComposeConfig(config, project, image) {
 
 function hasLoopbackBinding(ports) {
   const bindings = ports?.['3306/tcp'];
-  // Docker may also publish ::1 when the requested host is 127.0.0.1. Both are
-  // loopback. Any other address, port or extra mapping is rejected.
-  if (!ports || Object.keys(ports).length !== 1 || !Array.isArray(bindings) || bindings.length < 1 || bindings.length > 2) return false;
-  const hosts = new Set();
-  for (const binding of bindings) {
-    if (binding?.HostPort !== '33317' || (binding.HostIp !== '127.0.0.1' && binding.HostIp !== '::1') || hosts.has(binding.HostIp)) return false;
-    hosts.add(binding.HostIp);
-  }
-  return hosts.has('127.0.0.1');
+  return ports && Object.keys(ports).length === 1 && Array.isArray(bindings) &&
+    bindings.length === 1 && bindings[0]?.HostIp === '127.0.0.1' && bindings[0].HostPort === '33317';
 }
 
 function inspectContainer(record) {
@@ -169,7 +162,7 @@ export async function withNewDemo(dialect, work, { signal } = {}) {
       }
       if (health === 'healthy') {
         if (!hasLoopbackBinding(container.NetworkSettings?.Ports)) {
-          throw new Error('Demo local: the running container did not publish the expected loopback address. ' + JSON.stringify(container.NetworkSettings?.Ports ?? null));
+          throw new Error('Demo local: the running container did not publish the expected loopback address.');
         }
         break;
       }
