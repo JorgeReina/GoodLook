@@ -30,10 +30,30 @@ Para terminar, detener Angular y la API, y pulsar Enter en la consola interactiv
 
 En esa fecha se completó el recorrido descrito con Chrome Headless, Playwright Core temporal y MySQL 8.4 local: registro, acceso, selección de catálogo, disponibilidad, reserva y consulta persistente tras recarga. La automatización utilizada fue temporal y no forma parte de la suite del repositorio; la comprobación es reproducible manualmente con los pasos anteriores. No cubre otros roles, errores, concurrencia ni despliegues remotos.
 
-## Empaquetado aislado para Vercel
+## Producto instalable y paquete de entrega
 
-La configuración de la raíz construye exclusivamente el componente `/piloto` como aplicación independiente; no compila ni navega las pantallas antiguas ni su URL de backend. La función `api/index.ts` recibe las peticiones `/api/...` en el mismo origen y exporta la aplicación Express sin abrir un puerto. `/` redirige a `/piloto`.
+Desde la raíz, `npm run build` compila el piloto y el producto en `FrontEndGoodLook/dist/front-end-good-look`. El verificador comprueba las dos entradas HTML, el manifiesto, los iconos y el alcance del service worker. La configuración de entrega dirige `/` a `/producto/`; `/piloto` sigue sirviendo el piloto. La función `api/index.ts` recibe `/api/...` en el mismo origen. Las rutas profundas de producto se resuelven en su HTML, y el manifiesto y los archivos del worker se sirven como recursos independientes.
 
-Configurar en Vercel las variables sensibles mediante el panel o el gestor de secretos, nunca mediante commits o subiendo archivos `.env`. La API requiere `DATABASE_URL` (URL MySQL con credenciales codificadas), `MYSQL_TLS=true`, `APP_ORIGIN` igual al origen HTTPS del piloto y `AUTH_LIMIT_SECRET` aleatorio de al menos 32 bytes en hex. El acceso de la base desde Vercel requiere que MonsterASP permita conexiones externas; verificar certificado TLS y limitar exposición según las capacidades del proveedor. La compilación usa Node 24.
+El service worker se instala en el ámbito `/producto/` sobre HTTPS o loopback. Guarda la interfaz y los iconos para abrir la aplicación sin red. Acceso, catálogo, agenda, citas y reservas requieren conexión. En caso de error de transporte durante una reserva, conservar el intento para confirmar de nuevo la misma solicitud cuando vuelva la red. La aplicación avisa cuando hay una actualización y solo recarga tras la acción del usuario.
 
-Esto prepara una demostración, no declara la aplicación lista para clientes: faltan pruebas completas en navegador y MonsterASP, evaluación del limitador tras proxy y prevención de abuso, cambios de configuración concurrentes, copias y revisión de seguridad. No conectar el piloto de pruebas a datos reales. El catálogo remoto requiere datos sintéticos previamente creados. Los despliegues y variables deben dirigirse a proyectos y entornos explícitamente identificados; no apuntar a la base antigua.
+### Verificación local
+
+Desde la raíz, con Node 24.22.3 o compatible y Docker Desktop en contexto Linux, instalar dependencias y compilar. El arnés de Playwright sirve el build y la API en el mismo origen local y utiliza una base efímera propia en el puerto 33317.
+
+```sh
+npm ci --prefix backend-node
+npm run build --prefix backend-node
+npm run build
+cd FrontEndGoodLook
+npx playwright install chromium
+npm run test:e2e
+```
+
+En Android con Chrome, abrir la URL de pruebas vía HTTPS y usar la instalación del navegador. En iOS con Safari, usar Compartir, Añadir a pantalla de inicio y abrir GoodLook desde el icono. En cada dispositivo, probar entrada inicial, acceso, cierre de sesión, recarga sin conexión, intento de reserva sin red y actualización del build. Registrar modelo, versión de navegador y resultado. Las pruebas automatizadas de Chromium en escritorio se registran por separado.
+
+### Corte propuesto
+
+1. Integrar mediante PR hacia `main` y verificar el SHA candidato, sus builds y las comprobaciones de CI. Las pruebas que escriben requieren un destino aislado de producción. Reservar MonsterASP para la entrega real.
+2. Verificar el proyecto y entorno Vercel, el origen HTTPS exacto de `APP_ORIGIN`, TLS con certificado verificado en `DATABASE_URL`, `MYSQL_TLS=true` y gestión de `AUTH_LIMIT_SECRET` mediante variables protegidas. Confirmar el esquema MariaDB 006, el historial y una copia con restauración ensayada. Esta tanda usa el esquema existente.
+3. Preparar y comprobar el artefacto. Revisar el proxy, las cookies Secure y HttpOnly y las barreras de autorización. Comprobar `/`, `/piloto`, `/producto/`, una ruta profunda, el manifiesto, `ngsw.json`, el JavaScript del worker y respuestas JSON de catálogo y sesión. Mantener separada la promoción a producción.
+4. Tras promover, confirmar el SHA que sirve el dominio y repetir las comprobaciones HTTP y de navegador. Si hay regresión, volver a la revisión de aplicación compatible con el esquema vigente y comprobar de nuevo la sesión y las reservas. Restaurar base solo si corresponde al fallo y tras decidir cómo conservar las escrituras posteriores a la copia.

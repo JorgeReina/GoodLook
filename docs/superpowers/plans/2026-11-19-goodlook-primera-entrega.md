@@ -157,7 +157,7 @@ Cliente y API mantienen los nombres de los DTO en `backend-node/src/product/cont
 **Archivos.** Crear `FrontEndGoodLook/src/manifest.product.webmanifest`, `FrontEndGoodLook/ngsw-product.json`, iconos y `FrontEndGoodLook/src/app/product/install/update.service.ts`. Integrar en `angular.json`, entrada de producto y shell.
 
 - [ ] Probar que el build genera manifiesto, iconos de 192 y 512 px, service worker y recursos iniciales. En Playwright, probar actualización, navegación offline, cierre de sesión, recarga offline y petición fallida de reserva.
-- [ ] Aplicar `start_url: /`, `scope: /`, nombre GoodLook y presentación standalone. Cachear recursos de interfaz y excluir `/api/**` de navegación y almacenamiento del worker; las respuestas privadas se mantienen fuera de caché. Detectar falta de red y ofrecer reintento. Informar al usuario antes de recargar una actualización para preservar una reserva en curso.
+- [ ] Aplicar `start_url: ./` y `scope: ./` en el manifiesto servido en `/producto/`, con nombre GoodLook y presentación standalone. El paquete de entrega redirige la entrada principal a `/producto/`. Cachear recursos de interfaz y excluir `/api/**` del almacenamiento del worker. Detectar falta de red y ofrecer reintento. Informar al usuario antes de recargar y esperar a que se resuelva cualquier intento de reserva pendiente.
 - [ ] Verificar en navegador sobre loopback o HTTPS. Registrar por separado instalación, apertura, actualización, sesión y offline en Android/Chrome e iOS/Safari reales. Para dispositivos reales usar HTTPS con backend aislado de producción. Registrar modelo, navegador y resultado o falta de dispositivo. Commit `Package GoodLook as an installable PWA`.
 
 ## Tarea 12 · Aceptación, CI y preparación de release
