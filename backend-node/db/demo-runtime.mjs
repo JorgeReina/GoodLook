@@ -1,6 +1,6 @@
 import childProcess from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync, rmdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, rmSync, rmdirSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -61,10 +61,34 @@ function assertComposeConfig(config, project, image) {
   return health;
 }
 
+function isLoopbackPublish(binding) {
+  return binding?.HostIp === '127.0.0.1' && binding.HostPort === '33317';
+}
+
+// HostConfig.PortBindings lists only the ports this process published.
 function hasLoopbackBinding(ports) {
   const bindings = ports?.['3306/tcp'];
   return ports && Object.keys(ports).length === 1 && Array.isArray(bindings) &&
-    bindings.length === 1 && bindings[0]?.HostIp === '127.0.0.1' && bindings[0].HostPort === '33317';
+    bindings.length === 1 && isLoopbackPublish(bindings[0]);
+}
+
+// NetworkSettings.Ports also lists image EXPOSE entries that were not published.
+// MySQL 8.4 adds 33060/tcp as null. Those entries are not host bindings.
+function isUnpublished(value) {
+  return value == null || (Array.isArray(value) && value.length === 0);
+}
+
+function hasPublishedLoopback(ports) {
+  const bindings = ports?.['3306/tcp'];
+  return !!ports && Array.isArray(bindings) && bindings.length === 1 && isLoopbackPublish(bindings[0]) &&
+    Object.entries(ports).every(([name, value]) => name === '3306/tcp' || isUnpublished(value));
+}
+
+function observedPorts(ports) {
+  const line = 'NetworkSettings.Ports=' + JSON.stringify(ports ?? null);
+  const file = process.env.GOODLOOK_PORT_INSPECT_LOG;
+  if (file) appendFileSync(file, 'Demo local: ' + line + '\n');
+  return line;
 }
 
 function inspectContainer(record) {
@@ -95,8 +119,9 @@ export function requireDemoOwnership(capability) {
   if (!record) throw new Error('Demo local: container ownership was not granted by this process.');
   const container = inspectContainer(record);
   if (!container.State?.Running || container.State.Health?.Status !== 'healthy' ||
-      !hasLoopbackBinding(container.NetworkSettings?.Ports)) {
-    throw new Error('Demo local: the owned container is not healthy on the expected loopback address.');
+      !hasPublishedLoopback(container.NetworkSettings?.Ports)) {
+    throw new Error('Demo local: the owned container is not healthy on the expected loopback address. ' +
+      observedPorts(container.NetworkSettings?.Ports));
   }
   return { containerId: record.containerId, dialect: record.dialect };
 }
@@ -161,8 +186,9 @@ export async function withNewDemo(dialect, work, { signal } = {}) {
         throw new Error('Demo local: the isolated database did not become healthy.');
       }
       if (health === 'healthy') {
-        if (!hasLoopbackBinding(container.NetworkSettings?.Ports)) {
-          throw new Error('Demo local: the running container did not publish the expected loopback address.');
+        const observed = observedPorts(container.NetworkSettings?.Ports);
+        if (!hasPublishedLoopback(container.NetworkSettings?.Ports)) {
+          throw new Error('Demo local: the running container did not publish the expected loopback address. ' + observed);
         }
         break;
       }

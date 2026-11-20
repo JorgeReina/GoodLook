@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import mysql from 'mysql2/promise';
 import { mockDocker, networkId } from './demo-containers.fixture.mjs';
@@ -46,12 +49,44 @@ for (const [label, simulation, reason] of [
   ['remote Docker endpoint', { endpoint: 'tcp://192.0.2.10:2376' }, /local Docker socket/],
   ['persistent storage mount', { change: container => { container.Mounts = [{ Type: 'volume', Destination: '/var/lib/mysql' }]; } }, /container identity/],
   ['nonloopback published port', { change: container => { container.NetworkSettings.Ports['3306/tcp'][0].HostIp = '0.0.0.0'; } }, /publish the expected loopback/],
+  ['published extra port', { change: container => { container.NetworkSettings.Ports['33060/tcp'] = [{ HostIp: '0.0.0.0', HostPort: '33060' }]; } }, /publish the expected loopback/],
+  ['second loopback binding', { change: container => { container.NetworkSettings.Ports['3306/tcp'].push({ HostIp: '::1', HostPort: '33317' }); } }, /publish the expected loopback/],
 ]) {
   test('rejects ' + label + ' before granting access to the database', async t => {
     mockDocker(t, simulation);
     const work = t.mock.fn();
     await assert.rejects(withNewDemo('mysql', work), reason);
     assert.equal(work.mock.callCount(), 0);
+  });
+}
+
+test('appends the observed port map when the diagnostic log is set', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'goodlook-ports-'));
+  const file = join(directory, 'ports.log');
+  const previous = process.env.GOODLOOK_PORT_INSPECT_LOG;
+  process.env.GOODLOOK_PORT_INSPECT_LOG = file;
+  t.after(() => {
+    if (previous === undefined) delete process.env.GOODLOOK_PORT_INSPECT_LOG;
+    else process.env.GOODLOOK_PORT_INSPECT_LOG = previous;
+    rmSync(directory, { recursive: true, force: true });
+  });
+  mockDocker(t, {
+    change: container => { container.NetworkSettings.Ports['33060/tcp'] = null; },
+  });
+  await withNewDemo('mysql', async () => {});
+  const log = readFileSync(file, 'utf8');
+  assert.match(log, /"HostIp":"127.0.0.1","HostPort":"33317"/);
+  assert.match(log, /"33060\/tcp":null/);
+});
+
+for (const unpublished of [null, []]) {
+  test('accepts unpublished exposed port ' + JSON.stringify(unpublished) + ' beside the loopback binding', async t => {
+    mockDocker(t, {
+      change: container => { container.NetworkSettings.Ports['33060/tcp'] = unpublished; },
+    });
+    const work = t.mock.fn(async owner => requireDemoOwnership(owner).containerId);
+    assert.equal(await withNewDemo('mysql', work), target.containerId);
+    assert.equal(work.mock.callCount(), 1);
   });
 }
 
