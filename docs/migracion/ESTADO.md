@@ -1,6 +1,6 @@
 # Estado de migración GoodLook
 
-> **Aviso.** Este archivo es un registro histórico de la migración. El diario se conserva en el tiempo verbal de cada jornada. Las frases en presente sobre el frontend que ya no describen el estado actual están marcadas con **[histórico]**. El estado vigente del frontend está en [FrontEndGoodLook/README.md](../../FrontEndGoodLook/README.md).
+> **Aviso.** Este archivo es un registro histórico de la migración. El diario se conserva en el tiempo verbal de cada jornada. Las frases en presente sobre el frontend que ya no describen el estado actual están marcadas con **[histórico]**. El estado vigente del frontend está en [FrontEndGoodLook/README.md](../../FrontEndGoodLook/README.md). La decisión del [issue #17](https://github.com/JorgeReina/GoodLook/issues/17) deja la aplicación heredada congelada e histórica, sin borrarla, y mantiene `/piloto` durante el corte como entrada temporal. El borrado queda en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34).
 
 Fecha: 2026-11-15. Base: commit ce0a9b0107edbfe61a8b012fdd8a0712edf93f36.
 

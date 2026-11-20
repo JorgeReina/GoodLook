@@ -4,7 +4,7 @@ La ruta `/piloto` utiliza rutas relativas `/api` con cookies HttpOnly, sin local
 
 ## Dos formas de abrir el piloto
 
-El mismo piloto se abre de dos maneras. El destino de la aplicación heredada y de `/piloto` sigue pendiente en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17).
+El mismo piloto se abre de dos maneras. `/piloto` se mantiene durante el corte como entrada temporal y se retira después, en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34). La aplicación heredada que también abre esta ruta está congelada. La decisión está en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17).
 
 - **Build standalone.** `src/main.pilot.ts` arranca `PilotComponent` como aplicación propia. Desde `FrontEndGoodLook`, `npm run build -- --configuration=pilot` deja ese `index.html` en `dist/front-end-good-look`. El `npm run build` de la raíz hace ese paso y, en el paquete, Vercel reescribe `/piloto` a ese archivo.
 - **Ruta de la aplicación heredada.** `npx ng serve --host localhost --proxy-config proxy.pilot.json` arranca `AppModule` (`src/main.ts`). El enrutador carga el mismo componente en `http://localhost:4200/piloto`.

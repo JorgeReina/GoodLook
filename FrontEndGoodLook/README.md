@@ -2,9 +2,11 @@
 
 Un solo proyecto Angular 22, con Angular Material y CDK. El mismo árbol tiene tres superficies:
 
-1. **Aplicación heredada.** `src/main.ts` arranca `AppModule` (NgModule). Es lo que sirven `ng serve` y `ng build` cuando no se elige otra configuración. El destino de este código, y el de `/piloto`, sigue abierto en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17).
-2. **Piloto.** La configuración `pilot` (`src/main.pilot.ts`) arranca el piloto como aplicación propia. En el paquete de entrega, Vercel sirve ese `index.html` en `/piloto`. El uso con la API está en [PILOTO.md](PILOTO.md).
+1. **Aplicación heredada.** `src/main.ts` arranca `AppModule` (NgModule). Es lo que sirven `ng serve` y `ng build` cuando no se elige otra configuración. Está congelada: permanece en el árbol como código histórico y no se borra en esta tanda.
+2. **Piloto.** La configuración `pilot` (`src/main.pilot.ts`) arranca el piloto como aplicación propia. En el paquete de entrega, Vercel sirve ese `index.html` en `/piloto`. Esa entrada se mantiene durante el corte como temporal y se retira después. El uso con la API está en [PILOTO.md](PILOTO.md).
 3. **Producto PWA.** La configuración `product` (`src/main.product.ts`) es la aplicación instalable. En el paquete se publica bajo `/producto/`.
+
+La decisión está en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17). El borrado de la aplicación heredada y la retirada de `/piloto` quedan para después del corte, en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34).
 
 El diario de la migración está en [docs/migracion/](../docs/migracion/).
 
@@ -81,10 +83,10 @@ El script `build` de este paquete, sin argumentos, es `ng build`. Su configuraci
 
 ## Pruebas
 
-Los specs de Karma del producto, los mismos que ejecuta el CI:
+Los specs de Karma del producto y del piloto, los mismos que ejecuta el CI:
 
 ```sh
-npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts'
+npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts' --include='src/app/pilot/**/*.spec.ts'
 ```
 
 Hace falta Chrome o Chromium local, que Karma abre como `ChromeHeadless`. En el runner de GitHub Actions el flujo apunta `CHROME_BIN` al Chromium de Playwright con `--no-sandbox`, porque ese entorno bloquea los namespaces del navegador.
@@ -99,6 +101,6 @@ Este paquete no define lint. `package.json` no tiene un script `lint` y `angular
 
 El flujo [`.github/workflows/goodlook-product.yml`](../.github/workflows/goodlook-product.yml) corre en `push` y `pull_request` hacia `main` y `work/goodlook-migracion`, y también con `workflow_dispatch`. Usa Node 24.
 
-En la parte de frontend ejecuta el `npm run build` de la raíz y, dentro de `FrontEndGoodLook`, los specs de Karma con `--include='src/app/product/**/*.spec.ts'`. Ese filtro deja fuera el resto de specs de `src/app`: la aplicación heredada y el piloto. Entre los que quedan fuera hay 6 specs heredados que fallan; están registrados en el [issue #26](https://github.com/JorgeReina/GoodLook/issues/26).
+En la parte de frontend ejecuta el `npm run build` de la raíz y, dentro de `FrontEndGoodLook`, los specs de Karma de `src/app/product/**` y de `src/app/pilot/**`. Los specs de la aplicación heredada quedan fuera a propósito. Seis fallan y están registrados en el [issue #26](https://github.com/JorgeReina/GoodLook/issues/26); no se reparan en este flujo. Su retirada va con el borrado previsto en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34).
 
 El mismo flujo también compila y prueba la API, corre la integración MySQL y MariaDB, e instala Chromium para `npm run test:e2e`. Esos pasos no cambian el filtro de Karma.
