@@ -1,6 +1,6 @@
-# Esquema GoodLook — versión inicial
+# Esquema GoodLook
 
-Esta migración establece una base nueva para MySQL 8.0.16+ con InnoDB, UUID suministrados por la aplicación y fechas `DATETIME(3)` en UTC. No ejecutarla sobre la base desplegada sin plan explícito. MySQL DDL realiza commits implícitos: no existe reversión transaccional de la migración. Hacer una copia y restaurar una base aislada para ensayar cualquier despliegue real. La aplicación debe fijar la zona de sesión `+00:00`, y validar las zonas IANA, divisas, entradas, identidad y permisos en runtime.
+La serie vigente es `001`–`006`, en `migrations` para MySQL 8 y en `migrations-mariadb` para MariaDB 10.11. La `001` establece una base nueva con InnoDB, UUID suministrados por la aplicación y fechas `DATETIME(3)` en UTC. No ejecutarla sobre la base del sistema antiguo ni sobre una base compartida sin un plan explícito. MySQL DDL realiza commits implícitos: no existe reversión transaccional de la migración. Hacer una copia y restaurar una base aislada para ensayar cualquier despliegue real. La aplicación debe fijar la zona de sesión `+00:00`, y validar las zonas IANA, divisas, entradas, identidad y permisos en runtime. El significado de cada versión y el arranque de la API están en [`../README.md`](../README.md). El diario de migración está en [`docs/migracion/`](../../docs/migracion/).
 
 ## Ejecución manual aislada
 
@@ -17,9 +17,13 @@ mysql --database=goodlook_test --init-command="SET time_zone = '+00:00'" < backe
 
 La clave compuesta `(business_id, id)` y las FKs compuestas impiden asociar profesionales, servicios y horarios de otros negocios. `professional_services` determina las combinaciones admitidas en citas. Las restricciones no impiden que una consulta sin filtro lea otro negocio: cada operación debe autorizar al actor y filtrar por empresa y recurso. La tabla `users` es global, y un cliente puede reservar en varias empresas.
 
-Los servicios y profesionales se desactivan en lugar de borrarse para preservar historial. Las citas conservan precio y moneda acordados. No se guardan hashes de tokens de autenticación en texto recuperable: `auth_sessions.token_hash` es SHA-256 del token aleatorio. Los horarios semanales usan horas locales y día ISO de negocio; excepciones, descansos, precios por profesional y cambios de sede son trabajo futuro.
+Los servicios y profesionales se desactivan en lugar de borrarse para preservar historial. Las citas conservan precio y moneda acordados. No se guardan hashes de tokens de autenticación en texto recuperable: `auth_sessions.token_hash` es SHA-256 del token aleatorio. Los horarios semanales usan horas locales y día ISO de negocio. La migración 006 añade cierres de agenda (`professional_closures`) y la marca de asignación activa. Precios distintos por profesional y cambios de sede no forman parte del esquema.
 
-**Solapamientos:** MySQL no ofrece aquí una restricción automática para intervalos. Toda creación/reprogramación debe realizar en la misma transacción un bloqueo `SELECT ... FOR UPDATE` de la fila del profesional, volver a consultar sus reservas activas con `existing.start_at < requested.end_at AND existing.end_at > requested.start_at` y solo después insertar; todos los caminos de escritura deben cumplir el mismo protocolo. Los cambios de estado que liberen o restauren un hueco también deben coordinarse con ese bloqueo. Hay que probar solicitudes concurrentes reales contra MySQL antes de declarar lista la función.
+Nota histórica: este apartado presentaba los descansos y las excepciones como trabajo futuro. Los cierres de agenda ya están en la migración 006.
+
+**Solapamientos:** MySQL no ofrece aquí una restricción automática para intervalos. Toda creación o reprogramación debe realizar en la misma transacción el bloqueo descrito en [`docs/migracion/RESERVAS.md`](../../docs/migracion/RESERVAS.md): negocio, cuentas y perfiles, y después la condición `existing.start_at < requested.end_at AND existing.end_at > requested.start_at`. Los cambios que liberen o restauren un hueco siguen el mismo orden. La carrera de dos reservas se comprueba con `bash scripts/test-mysql-integration.sh mysql` y `bash scripts/test-mysql-integration.sh mariadb`. Esa suite no cubre todas las operaciones concurrentes.
+
+Nota histórica: este párrafo pedía probar la carrera en MySQL antes de dar por existente la reserva. La suite de integración ya la ejecuta en MySQL 8.4 y MariaDB 10.11.
 
 ## Ejecutor versionado
 

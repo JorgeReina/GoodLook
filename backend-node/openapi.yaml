@@ -1,0 +1,1538 @@
+openapi: 3.0.3
+info:
+  title: GoodLook API
+  version: 0.1.0
+  description: |
+    Contrato de las rutas que monta `createRuntimeApp` al ejecutar `npm start`
+    o al cargar `api/index.ts`. Este archivo no es una ruta HTTP: el proceso
+    no sirve Swagger ni este YAML.
+
+    Las escrituras comparan la cabecera `Origin` con `APP_ORIGIN`. La sesión
+    viaja en la cookie `goodlook_session` (HttpOnly, Secure, SameSite=Strict).
+    Salvo `GET /health`, las respuestas de estas rutas envían
+    `Cache-Control: no-store`.
+
+    Hay dos familias. El piloto usa `/api/appointments` y el catálogo de
+    `/api/businesses`. El producto usa `/api/catalog`, `/api/bookings`,
+    `/api/me`, `/api/agenda` y `/api/manage`.
+servers:
+  - url: http://127.0.0.1:3000
+    description: Proceso local. El puerto es `PORT` y por defecto es 3000.
+tags:
+  - name: health
+  - name: auth
+  - name: catalogo-piloto
+  - name: catalogo-publico
+  - name: citas-piloto
+  - name: reservas
+  - name: producto
+  - name: gestion
+  - name: invitaciones
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Salud del proceso
+      responses:
+        '200':
+          description: Proceso en marcha.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+  /api/auth/register:
+    post:
+      tags: [auth]
+      summary: Alta de cuenta, sin iniciar sesión
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, displayName]
+              properties:
+                email: { type: string, maxLength: 254 }
+                password: { type: string, minLength: 10, maxLength: 128 }
+                displayName: { type: string, maxLength: 120 }
+      responses:
+        '201':
+          description: Cuenta creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicUser' }
+        '400': { $ref: '#/components/responses/ErrorInvalid' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+        '409':
+          description: El correo ya existe.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/UnavailableError' }
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Inicio de sesión
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string, minLength: 10, maxLength: 128 }
+      responses:
+        '200':
+          description: Perfil público y cookie de sesión de 24 horas.
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicUser' }
+        '400': { $ref: '#/components/responses/ErrorInvalid' }
+        '401':
+          description: Credenciales no válidas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/UnavailableError' }
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: Identidad de la cookie
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Perfil de la sesión.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicUser' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoca la sesión y borra la cookie
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      responses:
+        '204': { description: Cookie retirada. }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+  /api/businesses:
+    get:
+      tags: [catalogo-piloto]
+      summary: Negocios publicados del catálogo de piloto
+      responses:
+        '200':
+          description: Solo `id`, `name` y `timezone` de negocios con `is_public`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, timezone]
+                  properties:
+                    id: { $ref: '#/components/schemas/Uuid' }
+                    name: { type: string }
+                    timezone: { type: string }
+    post:
+      tags: [catalogo-piloto]
+      summary: Crea un negocio privado y la membresía owner
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, timezone]
+              properties:
+                name: { type: string, maxLength: 160 }
+                timezone: { type: string, description: Identificador IANA aceptado por Intl. }
+      responses:
+        '201':
+          description: Negocio creado, privado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name, timezone, isPublic]
+                properties:
+                  id: { $ref: '#/components/schemas/Uuid' }
+                  name: { type: string }
+                  timezone: { type: string }
+                  isPublic: { type: boolean, enum: [false] }
+        '400': { $ref: '#/components/responses/CatalogError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+  /api/businesses/visibility:
+    put:
+      tags: [catalogo-piloto]
+      summary: Publica o retira un negocio
+      description: |
+        Con el proceso real, esta ruta llama a gestión. Solo el owner puede
+        cambiar la visibilidad. La primera publicación exige nombre, sector,
+        dirección y al menos una oferta con profesional vinculado, asignación,
+        servicio activo y horario.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, isPublic]
+              properties:
+                businessId: { $ref: '#/components/schemas/Uuid' }
+                isPublic: { type: boolean }
+      responses:
+        '204': { description: Visibilidad actualizada. }
+        '400': { $ref: '#/components/responses/CatalogError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/services:
+    get:
+      tags: [catalogo-piloto]
+      summary: Servicios activos de un negocio publicado
+      parameters:
+        - name: businessId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Lista de servicios activos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CatalogService' }
+        '400': { $ref: '#/components/responses/CatalogError' }
+    post:
+      tags: [catalogo-piloto]
+      summary: Alta de servicio por owner o admin
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ServiceWrite'
+                - type: object
+                  required: [businessId]
+                  properties:
+                    businessId: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '201':
+          description: Servicio creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogService' }
+        '400': { $ref: '#/components/responses/CatalogError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/CatalogForbidden' }
+  /api/services/assign:
+    post:
+      tags: [catalogo-piloto]
+      summary: Asigna un servicio activo a un profesional
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, professionalId, serviceId]
+              properties:
+                businessId: { $ref: '#/components/schemas/Uuid' }
+                professionalId: { $ref: '#/components/schemas/Uuid' }
+                serviceId: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '204': { description: Asignación activa. }
+        '400': { $ref: '#/components/responses/CatalogError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/CatalogForbidden' }
+        '404': { $ref: '#/components/responses/CatalogError' }
+  /api/schedules:
+    get:
+      tags: [catalogo-piloto]
+      summary: Horario semanal de un profesional
+      description: Owner, admin o el propio profesional vinculado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessIdQuery' }
+        - name: professionalId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Franjas ordenadas. El fin de jornada puede ser `24:00`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkPeriod' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/CatalogForbidden' }
+    put:
+      tags: [catalogo-piloto]
+      summary: Sustituye el horario semanal
+      description: |
+        Owner o admin. Con gestión montada, si el cambio afecta a citas
+        futuras la API responde 409 hasta recibir `X-GoodLook-Impact`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, professionalId, hours]
+              properties:
+                businessId: { $ref: '#/components/schemas/Uuid' }
+                professionalId: { $ref: '#/components/schemas/Uuid' }
+                hours:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/WorkPeriod' }
+      responses:
+        '204': { description: Horario sustituido. }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/CatalogForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/professionals:
+    get:
+      tags: [catalogo-piloto]
+      summary: Profesionales activos de un negocio publicado
+      parameters:
+        - { $ref: '#/components/parameters/BusinessIdQuery' }
+      responses:
+        '200':
+          description: Identificador y nombre público. Sin cuentas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, businessId, displayName]
+                  properties:
+                    id: { $ref: '#/components/schemas/Uuid' }
+                    businessId: { $ref: '#/components/schemas/Uuid' }
+                    displayName: { type: string }
+        '400':
+          description: '`businessId` no es un UUID.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+    post:
+      tags: [catalogo-piloto]
+      summary: Crea un perfil profesional sin cuenta
+      description: Owner o admin. No envía correo ni vincula un usuario.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, displayName]
+              properties:
+                businessId: { $ref: '#/components/schemas/Uuid' }
+                displayName: { type: string, maxLength: 120 }
+      responses:
+        '201':
+          description: Perfil creado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, businessId, displayName]
+                properties:
+                  id: { $ref: '#/components/schemas/Uuid' }
+                  businessId: { $ref: '#/components/schemas/Uuid' }
+                  displayName: { type: string }
+        '400':
+          description: Entrada no válida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+  /api/catalog/businesses:
+    get:
+      tags: [catalogo-publico]
+      summary: Fichas publicadas, también sin oferta
+      responses:
+        '200':
+          description: Negocios con `is_public`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicBusiness' }
+  /api/catalog/businesses/{id}/services:
+    get:
+      tags: [catalogo-publico]
+      summary: Oferta reservable de un negocio publicado
+      parameters: [{ $ref: '#/components/parameters/BusinessId' }]
+      responses:
+        '200':
+          description: Servicios activos con profesional vinculado, asignación y horario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicService' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '404': { $ref: '#/components/responses/CodeNotFound' }
+  /api/catalog/businesses/{id}/professionals:
+    get:
+      tags: [catalogo-publico]
+      summary: Profesionales reservables para un servicio
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - name: serviceId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '200':
+          description: Profesionales activos, vinculados y con horario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicStaff' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '404': { $ref: '#/components/responses/CodeNotFound' }
+  /api/appointments/availability:
+    get:
+      tags: [citas-piloto]
+      summary: Huecos orientativos
+      description: |
+        Ventana máxima de siete días. Los candidatos son futuros, caben en la
+        jornada y en un cierre a las 24:00, y van en pasos de 15 minutos UTC.
+        Restan citas ocupadas y cierres. No reserva el hueco. Límite de 30
+        peticiones por minuto y por IP del socket.
+      parameters:
+        - { $ref: '#/components/parameters/BusinessIdQuery' }
+        - name: professionalId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: serviceId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: from
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/UtcTimestamp' }
+        - name: to
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/UtcTimestamp' }
+      responses:
+        '200':
+          description: Zona del negocio y huecos libres.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [timezone, slots]
+                properties:
+                  timezone: { type: string }
+                  slots:
+                    type: array
+                    items: { $ref: '#/components/schemas/Slot' }
+        '400': { $ref: '#/components/responses/AppointmentError' }
+        '422': { $ref: '#/components/responses/AppointmentError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503':
+          description: Limitador ausente o averiado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [Unavailable] }
+  /api/appointments:
+    post:
+      tags: [citas-piloto]
+      summary: Reserva del piloto
+      description: Sin clave de idempotencia. La sesión es el cliente.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PilotBooking' }
+      responses:
+        '201':
+          description: Cita creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '400': { $ref: '#/components/responses/AppointmentError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+        '409': { $ref: '#/components/responses/AppointmentError' }
+        '422': { $ref: '#/components/responses/AppointmentError' }
+  /api/appointments/me:
+    get:
+      tags: [citas-piloto]
+      summary: Citas del cliente autenticado
+      description: Intervalo máximo de 31 días. Como máximo 100 citas, por `start_at`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200':
+          description: Citas propias en camelCase, sin notas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CustomerAppointment' }
+        '400': { $ref: '#/components/responses/AppointmentError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+  /api/appointments/agenda:
+    get:
+      tags: [citas-piloto]
+      summary: Agenda del piloto
+      description: |
+        Owner, admin o el profesional del perfil. La respuesta usa los nombres
+        de columna de la consulta SQL, no camelCase. Unificarlos exigiría
+        cambiar código.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessIdQuery' }
+        - name: professionalId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+      responses:
+        '200':
+          description: Filas solapadas con el intervalo.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PilotAgendaRow' }
+        '400': { $ref: '#/components/responses/AppointmentError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/AppointmentError' }
+  /api/bookings:
+    post:
+      tags: [reservas]
+      summary: Reserva de producto
+      description: |
+        Exige `Idempotency-Key` UUID. La primera confirmación responde 201.
+        La misma clave y el mismo cuerpo responden 200 con la cita ya creada.
+        Otra clave usada con otro cuerpo responde 409 `idempotency_conflict`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Origin' }
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductBooking' }
+      responses:
+        '200':
+          description: Reintento de la misma clave.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '201':
+          description: Cita nueva.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: Origen distinto de `APP_ORIGIN`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [forbidden] }
+        '409':
+          description: Conflicto de hueco, oferta o clave.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingConflict' }
+  /api/me/memberships:
+    get:
+      tags: [producto]
+      summary: Pertenencias activas de la sesión
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Membresías activas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Membership' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/InternalCode' }
+  /api/me/bookings:
+    get:
+      tags: [producto]
+      summary: Citas de producto del cliente
+      description: Ventana máxima de 31 días. `cursor` es opaco y solo vale dentro de esa ventana.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/From' }
+        - { $ref: '#/components/parameters/To' }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Página de citas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingPage' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/InternalCode' }
+  /api/agenda:
+    get:
+      tags: [producto]
+      summary: Semana de agenda de un profesional
+      description: '`weekStart` es un lunes en `YYYY-MM-DD`. Sin acceso al perfil responde 403.'
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessIdQuery' }
+        - name: professionalId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - name: weekStart
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Horario, cierres y citas de la semana local del negocio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgendaWeek' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403':
+          description: La sesión no puede ver ese perfil.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [forbidden] }
+        '500': { $ref: '#/components/responses/InternalCode' }
+  /api/manage/businesses:
+    post:
+      tags: [gestion]
+      summary: Alta de negocio con ficha
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BusinessProfileWrite' }
+      responses:
+        '201':
+          description: Negocio privado con la membresía owner de la sesión.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BusinessProfile' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+  /api/manage/businesses/{id}:
+    get:
+      tags: [gestion]
+      summary: Ficha, servicios y equipo
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/BusinessId' }]
+      responses:
+        '200':
+          description: Estado de gestión del negocio.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedBusiness' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '404': { $ref: '#/components/responses/CodeNotFound' }
+  /api/manage/businesses/{id}/profile:
+    patch:
+      tags: [gestion]
+      summary: Edita la ficha
+      description: Solo owner. Al menos un campo. Cambiar la zona con citas futuras reservadas responde 409.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BusinessProfilePatch' }
+      responses:
+        '204': { description: Ficha actualizada. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/visibility:
+    put:
+      tags: [gestion]
+      summary: Publica o retira el negocio
+      description: Solo owner. La primera publicación exige ficha completa y una oferta reservable.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isPublic]
+              properties:
+                isPublic: { type: boolean }
+      responses:
+        '204': { description: Visibilidad actualizada. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/services:
+    post:
+      tags: [gestion]
+      summary: Alta de servicio
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManagedServiceWrite' }
+      responses:
+        '201':
+          description: Servicio creado, activo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedService' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+  /api/manage/businesses/{id}/services/{serviceId}:
+    patch:
+      tags: [gestion]
+      summary: Edita o desactiva un servicio
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ServiceId' }
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManagedServicePatch' }
+      responses:
+        '204': { description: Servicio actualizado. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/staff:
+    post:
+      tags: [gestion]
+      summary: Alta de perfil profesional
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/Origin' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [displayName]
+              properties:
+                displayName: { type: string, maxLength: 120 }
+      responses:
+        '201':
+          description: Perfil creado, sin vínculo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ManagedStaff' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+  /api/manage/businesses/{id}/staff/{professionalId}:
+    patch:
+      tags: [gestion]
+      summary: Edita el nombre público o desactiva el perfil
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName: { type: string, maxLength: 120 }
+                active: { type: boolean }
+      responses:
+        '204': { description: Perfil actualizado. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/staff/{professionalId}/services:
+    put:
+      tags: [gestion]
+      summary: Sustituye los servicios asignados
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serviceIds]
+              properties:
+                serviceIds:
+                  type: array
+                  maxItems: 200
+                  items: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '204': { description: Asignaciones sustituidas. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/staff/{professionalId}/hours:
+    get:
+      tags: [gestion]
+      summary: Horario semanal del perfil
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+      responses:
+        '200':
+          description: Franjas del perfil.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [hours]
+                properties:
+                  hours:
+                    type: array
+                    items: { $ref: '#/components/schemas/WorkPeriod' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+    put:
+      tags: [gestion]
+      summary: Sustituye el horario semanal
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hours]
+              properties:
+                hours:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/WorkPeriod' }
+      responses:
+        '204': { description: Horario sustituido. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/staff/{professionalId}/closures:
+    get:
+      tags: [gestion]
+      summary: Cierres del perfil
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+      responses:
+        '200':
+          description: Cierres del perfil.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [closures]
+                properties:
+                  closures:
+                    type: array
+                    items: { $ref: '#/components/schemas/Closure' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+    post:
+      tags: [gestion]
+      summary: Crea un cierre
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - { $ref: '#/components/parameters/Origin' }
+        - { $ref: '#/components/parameters/Impact' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startAt, endAt]
+              properties:
+                startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+                endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+      responses:
+        '201':
+          description: Cierre creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Closure' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+        '409': { $ref: '#/components/responses/ManagementConflict' }
+  /api/manage/businesses/{id}/staff/{professionalId}/closures/{closureId}:
+    delete:
+      tags: [gestion]
+      summary: Elimina un cierre
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - name: closureId
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/Uuid' }
+        - { $ref: '#/components/parameters/Origin' }
+      responses:
+        '204': { description: Cierre eliminado. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+  /api/manage/businesses/{id}/staff/{professionalId}/invitation:
+    delete:
+      tags: [invitaciones]
+      summary: Revoca las invitaciones vigentes del perfil
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/ProfessionalId' }
+        - { $ref: '#/components/parameters/Origin' }
+      responses:
+        '204': { description: Invitaciones vigentes revocadas. }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/CodeForbidden' }
+  /api/invitations:
+    post:
+      tags: [invitaciones]
+      summary: Emite una invitación de un uso
+      description: |
+        Owner o admin. El token caduca a los siete días. Revoca las
+        invitaciones vigentes del mismo perfil. La respuesta es el único
+        momento en que el token viaja en claro.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId, professionalId]
+              properties:
+                businessId: { $ref: '#/components/schemas/Uuid' }
+                professionalId: { $ref: '#/components/schemas/Uuid' }
+      responses:
+        '201':
+          description: Token para entregar por un canal privado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expiresInSeconds]
+                properties:
+                  token: { type: string, pattern: '^[a-f0-9]{64}$' }
+                  expiresInSeconds: { type: integer, enum: [604800] }
+        '400':
+          description: Entrada no válida.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+  /api/invitations/accept:
+    post:
+      tags: [invitaciones]
+      summary: Acepta una invitación con la cuenta de la sesión
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/Origin' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        '204': { description: Perfil vinculado. }
+        '400':
+          description: Token con formato no válido.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorText' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '403': { $ref: '#/components/responses/ForbiddenOrigin' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: goodlook_session
+      description: Token hexadecimal de 32 bytes. El servidor guarda solo su SHA-256.
+  parameters:
+    Origin:
+      name: Origin
+      in: header
+      required: true
+      schema: { type: string }
+      description: Debe ser exactamente `APP_ORIGIN`.
+    Impact:
+      name: X-GoodLook-Impact
+      in: header
+      required: false
+      schema: { type: string, pattern: '^[a-f0-9]{64}$' }
+      description: Token devuelto por un 409 `impact_confirmation_required`.
+    BusinessId:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ServiceId:
+      name: serviceId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    ProfessionalId:
+      name: professionalId
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    BusinessIdQuery:
+      name: businessId
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/Uuid' }
+    From:
+      name: from
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/UtcTimestamp' }
+    To:
+      name: to
+      in: query
+      required: true
+      schema: { $ref: '#/components/schemas/UtcTimestamp' }
+  responses:
+    ErrorInvalid:
+      description: Entrada no válida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorText' }
+    UnauthorizedError:
+      description: Sin sesión.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: [Unauthorized] }
+    Unauthenticated:
+      description: Sin sesión.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, enum: [unauthenticated] }
+    ForbiddenOrigin:
+      description: El origen no coincide con `APP_ORIGIN`.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: ['Forbidden origin'] }
+    TooManyRequests:
+      description: Cupo del limitador agotado.
+      headers:
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: ['Too many requests'] }
+    UnavailableError:
+      description: El limitador no puede consultar la base.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: { type: string, enum: ['Service unavailable'] }
+    CatalogError:
+      description: Error del catálogo de piloto. `error` es `invalid`, `forbidden` o `not_found`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorText' }
+    CatalogForbidden:
+      description: Origen no permitido o rol insuficiente. El cuerpo usa `error`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorText' }
+    AppointmentError:
+      description: |
+        Cuerpo `{ "error": "<código>" }`. Códigos: `invalid` (400),
+        `unavailable` (422), `conflict` (409), `forbidden` (403),
+        `offer_changed` (409), `slot_unavailable` (409),
+        `idempotency_conflict` (409).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorText' }
+    CodeInvalid:
+      description: Entrada no válida.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, enum: [invalid_input] }
+    CodeForbidden:
+      description: Sesión sin permiso, u origen distinto en una escritura.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, enum: [forbidden] }
+    CodeNotFound:
+      description: Recurso inexistente o no publicado, según la ruta.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, enum: [not_found] }
+    InternalCode:
+      description: Fallo no clasificado de la ruta de producto.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code: { type: string, enum: [internal_error] }
+    ManagementConflict:
+      description: |
+        Conflicto de gestión. Puede ser `publication_incomplete`,
+        `timezone_has_bookings` o `impact_confirmation_required`.
+        En el catálogo de piloto el campo se llama `error` y un
+        `invalid_input` de gestión se reescribe como `invalid`.
+        En `/api/manage` el campo se llama `code`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ImpactBody' }
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    UtcTimestamp:
+      type: string
+      description: Instante UTC con milisegundos, `YYYY-MM-DDTHH:mm:ss.sssZ`.
+      example: '2030-01-07T09:00:00.000Z'
+    ErrorText:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    PublicUser:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        email: { type: string }
+        displayName: { type: string }
+    WorkPeriod:
+      type: object
+      required: [weekday, startTime, endTime]
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: Día ISO, lunes = 1. }
+        startTime: { type: string, example: '09:00' }
+        endTime: { type: string, description: 'Hora local HH:mm. El fin puede ser 24:00.', example: '18:00' }
+    CatalogService:
+      type: object
+      required: [id, businessId, name, durationMinutes, priceCents, currency]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+        priceCents: { type: integer, minimum: 0 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+    ServiceWrite:
+      type: object
+      required: [name, durationMinutes, priceCents, currency]
+      properties:
+        name: { type: string, maxLength: 160 }
+        durationMinutes: { type: integer, minimum: 1, maximum: 65535 }
+        priceCents: { type: integer, minimum: 0, maximum: 4294967295 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+    PublicBusiness:
+      type: object
+      required: [id, name, timezone]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        sector: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        timezone: { type: string }
+    PublicService:
+      allOf:
+        - $ref: '#/components/schemas/CatalogService'
+        - type: object
+          required: [active]
+          properties:
+            description: { type: string, nullable: true }
+            active: { type: boolean, enum: [true] }
+    PublicStaff:
+      type: object
+      required: [id, displayName, active, linked, serviceIds]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        displayName: { type: string }
+        active: { type: boolean, enum: [true] }
+        linked: { type: boolean, enum: [true] }
+        serviceIds:
+          type: array
+          items: { $ref: '#/components/schemas/Uuid' }
+    Slot:
+      type: object
+      required: [startAt, endAt]
+      properties:
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+    Quote:
+      type: object
+      required: [priceCents, currency, durationMinutes]
+      properties:
+        priceCents: { type: integer, minimum: 0 }
+        currency: { type: string, pattern: '^[A-Z]{3}$' }
+        durationMinutes: { type: integer, minimum: 1 }
+    PilotBooking:
+      type: object
+      required: [businessId, professionalId, serviceId, startAt]
+      properties:
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        professionalId: { $ref: '#/components/schemas/Uuid' }
+        serviceId: { $ref: '#/components/schemas/Uuid' }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        notes: { type: string, nullable: true, maxLength: 500 }
+    ProductBooking:
+      allOf:
+        - $ref: '#/components/schemas/PilotBooking'
+        - type: object
+          required: [quote]
+          properties:
+            quote: { $ref: '#/components/schemas/Quote' }
+    Appointment:
+      type: object
+      required: [id, businessId, professionalId, serviceId, customerUserId, startAt, endAt, priceCents, currency, status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        professionalId: { $ref: '#/components/schemas/Uuid' }
+        serviceId: { $ref: '#/components/schemas/Uuid' }
+        customerUserId: { $ref: '#/components/schemas/Uuid' }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        priceCents: { type: integer }
+        currency: { type: string }
+        status: { type: string }
+    CustomerAppointment:
+      type: object
+      required: [id, businessId, professionalId, serviceId, startAt, endAt, status, priceCents, currency]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        professionalId: { $ref: '#/components/schemas/Uuid' }
+        serviceId: { $ref: '#/components/schemas/Uuid' }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        status: { type: string }
+        priceCents: { type: integer }
+        currency: { type: string }
+    PilotAgendaRow:
+      type: object
+      description: Nombres de columna SQL, distintos del camelCase de las otras citas.
+      required: [id, service_id, customer_user_id, start_at, end_at, status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        service_id: { $ref: '#/components/schemas/Uuid' }
+        customer_user_id: { $ref: '#/components/schemas/Uuid' }
+        start_at: { type: string }
+        end_at: { type: string }
+        status: { type: string }
+        notes: { type: string, nullable: true }
+    BookingConflict:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum: [offer_changed, slot_unavailable, idempotency_conflict, conflict, unavailable, forbidden]
+        quote: { $ref: '#/components/schemas/Quote' }
+    Membership:
+      type: object
+      required: [businessId, businessName, timezone, role, professionalId]
+      properties:
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        businessName: { type: string }
+        timezone: { type: string }
+        role: { type: string, enum: [owner, admin, professional] }
+        professionalId: { $ref: '#/components/schemas/Uuid', nullable: true }
+    BookingPageItem:
+      type: object
+      required: [id, businessId, businessName, timezone, professionalId, professionalName, serviceId, serviceName, status, priceCents, currency, startAt, endAt, durationMinutes]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        businessId: { $ref: '#/components/schemas/Uuid' }
+        businessName: { type: string }
+        timezone: { type: string }
+        professionalId: { $ref: '#/components/schemas/Uuid' }
+        professionalName: { type: string }
+        serviceId: { $ref: '#/components/schemas/Uuid' }
+        serviceName: { type: string }
+        status: { type: string }
+        priceCents: { type: integer }
+        currency: { type: string }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        durationMinutes: { type: number }
+    BookingPage:
+      type: object
+      required: [items, nextCursor]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/BookingPageItem' }
+        nextCursor: { type: string, nullable: true }
+    AgendaAppointment:
+      type: object
+      required: [id, startAt, endAt, serviceId, serviceName, customerName, status]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        serviceId: { $ref: '#/components/schemas/Uuid' }
+        serviceName: { type: string }
+        customerName: { type: string }
+        status: { type: string }
+        notes: { type: string, nullable: true }
+    AgendaWeek:
+      type: object
+      required: [timezone, from, to, hours, closures, appointments]
+      properties:
+        timezone: { type: string }
+        from: { $ref: '#/components/schemas/UtcTimestamp' }
+        to: { $ref: '#/components/schemas/UtcTimestamp' }
+        hours:
+          type: array
+          items: { $ref: '#/components/schemas/WorkPeriod' }
+        closures:
+          type: array
+          items:
+            type: object
+            required: [id, startAt, endAt]
+            properties:
+              id: { $ref: '#/components/schemas/Uuid' }
+              startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+              endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        appointments:
+          type: array
+          items: { $ref: '#/components/schemas/AgendaAppointment' }
+    BusinessProfileWrite:
+      type: object
+      required: [name, timezone]
+      properties:
+        name: { type: string, maxLength: 160 }
+        timezone: { type: string }
+        sector: { type: string, nullable: true, maxLength: 80 }
+        address: { type: string, nullable: true, maxLength: 250 }
+    BusinessProfilePatch:
+      type: object
+      description: Al menos uno de los campos.
+      properties:
+        name: { type: string, maxLength: 160 }
+        timezone: { type: string }
+        sector: { type: string, nullable: true, maxLength: 80 }
+        address: { type: string, nullable: true, maxLength: 250 }
+    BusinessProfile:
+      type: object
+      required: [id, name, timezone, isPublic]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        name: { type: string }
+        timezone: { type: string }
+        sector: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        isPublic: { type: boolean }
+    ManagedServiceWrite:
+      allOf:
+        - $ref: '#/components/schemas/ServiceWrite'
+        - type: object
+          properties:
+            description: { type: string, nullable: true, maxLength: 500 }
+    ManagedServicePatch:
+      type: object
+      description: Al menos un campo.
+      properties:
+        name: { type: string, maxLength: 160 }
+        description: { type: string, nullable: true, maxLength: 500 }
+        durationMinutes: { type: integer, minimum: 1, maximum: 65535 }
+        priceCents: { type: integer, minimum: 0, maximum: 4294967295 }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        active: { type: boolean }
+    ManagedService:
+      allOf:
+        - $ref: '#/components/schemas/CatalogService'
+        - type: object
+          required: [active]
+          properties:
+            description: { type: string, nullable: true }
+            active: { type: boolean }
+    ManagedStaff:
+      type: object
+      required: [id, displayName, active, linked, serviceIds]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        displayName: { type: string }
+        active: { type: boolean }
+        linked: { type: boolean }
+        serviceIds:
+          type: array
+          items: { $ref: '#/components/schemas/Uuid' }
+    ManagedBusiness:
+      type: object
+      required: [business, services, staff]
+      properties:
+        business: { $ref: '#/components/schemas/BusinessProfile' }
+        services:
+          type: array
+          items: { $ref: '#/components/schemas/ManagedService' }
+        staff:
+          type: array
+          items: { $ref: '#/components/schemas/ManagedStaff' }
+    Closure:
+      type: object
+      required: [id, professionalId, startAt, endAt]
+      properties:
+        id: { $ref: '#/components/schemas/Uuid' }
+        professionalId: { $ref: '#/components/schemas/Uuid' }
+        startAt: { $ref: '#/components/schemas/UtcTimestamp' }
+        endAt: { $ref: '#/components/schemas/UtcTimestamp' }
+    ImpactBody:
+      type: object
+      properties:
+        code: { type: string }
+        error: { type: string }
+        affectedCount: { type: integer }
+        impactToken: { type: string }
