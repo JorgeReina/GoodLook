@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { isLoopbackHost, matchesProductionDatabase, readProductionDatabase } from './production-identity.mjs';
 
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
@@ -21,7 +22,7 @@ export async function verifyServerDialect(connection, dialect) {
 export function parseConfig(env) {
   if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
   const target = env.GOODLOOK_MIGRATION_TARGET;
-  if (!['test', 'development', 'production'].includes(target)) throw new Error('GOODLOOK_MIGRATION_TARGET must be test, development, or production');
+  if (!['test', 'development', 'preview', 'production'].includes(target)) throw new Error('GOODLOOK_MIGRATION_TARGET must be test, development, preview, or production');
   if ((target === 'production' || env.NODE_ENV === 'production') && env.GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS !== 'YES') {
     throw new Error('Production migrations are disabled; explicit override is required');
   }
@@ -35,6 +36,13 @@ export function parseConfig(env) {
   let database, user, password;
   try { database = decodeURIComponent(url.pathname.slice(1)); user = decodeURIComponent(url.username); password = decodeURIComponent(url.password); } catch { throw new Error('Invalid DATABASE_URL encoding'); }
   if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
+  if (!isLoopbackHost(url.hostname)) {
+    const production = readProductionDatabase();
+    if (!production && target !== 'production') throw new Error('Production database identity is not configured; refusing a non-loopback database');
+    if (target !== 'production' && matchesProductionDatabase({ host: url.hostname, database, user }, production)) {
+      throw new Error('Refusing to migrate the production database identity');
+    }
+  }
   return { host: url.hostname, port, user, password, database, timezone: 'Z', multipleStatements: true,
     ssl: tls ? { rejectUnauthorized: true } : undefined };
 }

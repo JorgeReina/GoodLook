@@ -51,6 +51,10 @@ npm run test:e2e
 
 En Android con Chrome, abrir la URL de pruebas vía HTTPS y usar la instalación del navegador. En iOS con Safari, usar Compartir, Añadir a pantalla de inicio y abrir GoodLook desde el icono. En cada dispositivo, probar entrada inicial, acceso, cierre de sesión, recarga sin conexión, intento de reserva sin red y actualización del build. Registrar modelo, versión de navegador y resultado. Las pruebas automatizadas de Chromium en escritorio se registran por separado.
 
+### Preview aislado
+
+El piloto y el producto llaman a `/api` en el mismo origen. La URL HTTPS que usan Frontend y QA es el alias de la rama en Vercel, y la API de ese despliegue usa las variables del entorno Preview. `APP_ORIGIN` tiene que ser exactamente ese origen, sin barra final. Una URL de un commit concreto envía otro `Origin` y las escrituras responden 403. El reparto de bases y la lista de pasos en MonsterASP y Vercel están en [docs/migracion/ENTORNOS.md](../docs/migracion/ENTORNOS.md). Hasta completarlos, el preview publicado y `https://good-look.vercel.app` siguen pudiendo escribir en la misma base.
+
 ### Corte propuesto
 
 1. Integrar mediante PR hacia `main` y verificar el SHA candidato, sus builds y las comprobaciones de CI. Las pruebas que escriben requieren un destino aislado de producción. Reservar MonsterASP para la entrega real.

@@ -139,3 +139,8 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - La configuración candidata dirige `/` a `/producto/`, conserva la entrada `/piloto` y empaqueta ambos builds. El verificador del paquete revisa el manifiesto, los iconos, los recursos precargados y la separación del piloto. [Guía de ejecución y corte](../../FrontEndGoodLook/PILOTO.md).
 - Se añadió un flujo de GitHub Actions para compilación, pruebas Angular y Node, integración Docker en ambos dialectos y aceptación Playwright. En local pasaron 21 pruebas Angular, 105 de API, 33 de base de datos, cinco integraciones por motor y cuatro recorridos Playwright. Chromium comprobó la instalabilidad, la recarga sin red, la ausencia de respuestas de API en la caché, el cierre de sesión y la actualización explícita.
 - Pendientes para la publicación: registrar instalación y actualización en Android con Chrome e iOS con Safari físicos sobre HTTPS aislado, ejecutar GitHub Actions y aprobar el PR de entrega. Esta tanda se comprobó localmente con el esquema 006.
+
+## Separación de preview y producción (20-11-2026)
+
+- El diagnóstico de código confirma lo ya anotado: preview y producción eligen la base solo con `DATABASE_URL`. Nada en el repositorio les obliga a usar destinos distintos, y el estado documentado es que ambos apuntan a `db80496`. Esta revisión no ha abierto Vercel ni MonsterASP.
+- La API no asigna el papel `development` cuando faltan `GOODLOOK_DATA_ENV` y `VERCEL_ENV`: sin papel, una base remota impide el arranque. La identidad de producción está solo en `backend-node/config/production-database.json`. La base nueva y el cambio de variables siguen siendo manuales. Procedimiento, coste orientativo y vuelta atrás: [ENTORNOS.md](ENTORNOS.md).
