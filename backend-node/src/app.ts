@@ -21,6 +21,9 @@ import type { AgendaStore } from './product/agenda-store.js';
 export function createApp(options?: { store: AuthStore; allowedOrigin: string; appointments?: AppointmentHandlers; professionals?: ProfessionalService; invitations?: InvitationService; catalog?: CatalogService; authLimiter?: AuthRateLimiter; availabilityLimiter?: AvailabilityLimiter; publicCatalog?: express.Router; memberships?: MembershipStore; management?: ManagementService; agenda?: AgendaStore }) {
 const app = express();
 app.disable('x-powered-by');
+// Leave trust proxy off. req.ip would parse X-Forwarded-For, which a client can forge
+// off Vercel and which is the wrong control even on Vercel. See clientAddress().
+app.set('trust proxy', false);
 app.use(express.json({ limit: '32kb' }));
 
 app.get('/health', (_req, res) => {

@@ -4,6 +4,7 @@ import { sessionUser } from '../auth/routes.js';
 import { AppointmentError, type BookingInput, createAppointment, listProfessionalAgenda } from './service.js';
 import type { AvailabilityQuery } from './public-availability.js';
 import type { AvailabilityLimiter } from './rate-limit.js';
+import { clientAddress } from '../client-address.js';
 
 type CreateInput = Parameters<typeof createAppointment>[1];
 type AgendaInput = Parameters<typeof listProfessionalAgenda>[1];
@@ -21,10 +22,10 @@ export function appointmentRoutes(store: AuthStore, allowedOrigin: string, handl
   router.get('/availability', async (req, res, next) => {
     try {
       if (!handlers.availability) { res.status(503).json({error:'Unavailable'}); return; }
-      // Do not trust X-Forwarded-For; socket address may be a reverse proxy.
-      if (!availabilityLimiter || !req.socket.remoteAddress) { res.status(503).json({error:'Unavailable'}); return; }
+      const address = clientAddress(req);
+      if (!availabilityLimiter || !address) { res.status(503).json({error:'Unavailable'}); return; }
       let rate;
-      try { rate=await availabilityLimiter.check(req.socket.remoteAddress); }
+      try { rate=await availabilityLimiter.check(address); }
       catch { res.status(503).json({error:'Unavailable'}); return; }
       if (!rate || typeof rate.allowed !== 'boolean' || (!rate.allowed && (!Number.isSafeInteger(rate.retryAfter) || rate.retryAfter < 1))) { res.status(503).json({error:'Unavailable'}); return; }
       if (!rate.allowed) { res.setHeader('Retry-After',String(rate.retryAfter)); res.status(429).json({error:'Too many requests'}); return; }

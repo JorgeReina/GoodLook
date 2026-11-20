@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSa
 import { promisify } from 'node:util';
 import type { AuthStore, User } from './store.js';
 import type { AuthRateLimiter } from './rate-limit.js';
+import { clientAddress } from '../client-address.js';
 const scrypt = promisify(scryptCallback);
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const publicUser = (u: User) => ({ id: u.id, email: u.email, displayName: u.displayName });
@@ -44,7 +45,9 @@ export function authRoutes(store: AuthStore, allowedOrigin: string, limiter?: Au
     if (req.method !== 'POST') { next(); return; }
     if (!limiter) { res.status(503).json({error:'Service unavailable'}); return; }
     try {
-      const result = await limiter.check(req.socket.remoteAddress ?? '', req.body?.email);
+      const address = clientAddress(req);
+      if (!address) { res.status(503).json({error:'Service unavailable'}); return; }
+      const result = await limiter.check(address, req.body?.email);
       if (!result.allowed) {res.setHeader('Retry-After',String(Math.max(1,Math.ceil(result.retryAfter))));res.status(429).json({error:'Too many requests'});return;}
       next();
     } catch {res.status(503).json({error:'Service unavailable'});}
