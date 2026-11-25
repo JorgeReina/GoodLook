@@ -2,6 +2,13 @@
 
 La ruta `/piloto` utiliza rutas relativas `/api` con cookies HttpOnly, sin localStorage ni token de la versión anterior. Requiere la nueva API y una base aislada con negocios, servicios, asociaciones y horarios de prueba; no funciona con la API .NET. El backend debe permitir el mismo origen del navegador mediante `APP_ORIGIN`.
 
+## Dos formas de abrir el piloto
+
+El mismo piloto se abre de dos maneras. `/piloto` se mantiene durante el corte como entrada temporal y se retira después, en el [issue #34](https://github.com/JorgeReina/GoodLook/issues/34). La aplicación heredada que también abre esta ruta está congelada. La decisión está en el [issue #17](https://github.com/JorgeReina/GoodLook/issues/17).
+
+- **Build standalone.** `src/main.pilot.ts` arranca `PilotComponent` como aplicación propia. Desde `FrontEndGoodLook`, `npm run build -- --configuration=pilot` deja ese `index.html` en `dist/front-end-good-look`. El `npm run build` de la raíz hace ese paso y, en el paquete, Vercel reescribe `/piloto` a ese archivo.
+- **Ruta de la aplicación heredada.** `npx ng serve --host localhost --proxy-config proxy.pilot.json` arranca `AppModule` (`src/main.ts`). El enrutador carga el mismo componente en `http://localhost:4200/piloto`.
+
 Para desarrollo local, usar Node 24 e instalar primero las dependencias del lockfile desde `FrontEndGoodLook` con `npm ci`. Una instalación anterior de Angular 16 no es compatible con la configuración actual y puede causar el error de `browserTarget`. Con la API escuchando en 127.0.0.1:3000 y `APP_ORIGIN=http://localhost:4200`, ejecutar `npx ng serve --host localhost --proxy-config proxy.pilot.json` y abrir `http://localhost:4200/piloto`. Usar localhost de forma coherente: el backend valida el Origin y las cookies son Secure. En producción se necesita un proxy HTTPS mismo origen; no exponer el backend de desarrollo.
 
 El catálogo debe contener datos. El piloto consulta horarios orientativos de los próximos siete días para la combinación seleccionada, mostrados en la zona horaria del negocio con su desplazamiento UTC. La API comprueba de nuevo la disponibilidad al reservar; si hay conflicto hay que actualizar los horarios. Las combinaciones sin asociación pueden rechazarse. El piloto requiere pruebas funcionales de navegador y MySQL antes de utilizarse con clientes.
