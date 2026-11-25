@@ -143,5 +143,5 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 ## Limitadores detrás de Vercel (20-11-2026)
 
 - Los limitadores de acceso (registro e inicio de sesión) y de disponibilidad dejan de usar la IP del socket cuando `VERCEL=1`. En ese modo la clave es la primera IP de `x-vercel-forwarded-for`, la cabecera que el borde de Vercel fija y que no se sustituye por `X-Forwarded-For`. `trust proxy` sigue apagado. Sin `VERCEL=1` se mantiene la IP del socket y se ignoran las cabeceras de reenvío. Una cabecera ausente o inválida en Vercel responde 503, sin caer al socket compartido.
-- La comprobación local fueron 113 pruebas de API, la comprobación de tipos y la compilación. No se ejecutó la integración MySQL/MariaDB en Docker en esta tanda: el SQL del limitador no cambió. No se modificaron Vercel, MonsterASP ni datos remotos.
+- La comprobación local fueron 114 pruebas de API, la comprobación de tipos y la compilación. No se ejecutó la integración MySQL/MariaDB en Docker en esta tanda: el SQL del limitador no cambió. No se modificaron Vercel, MonsterASP ni datos remotos.
 - Sigue el riesgo de NAT, de un proxy delante de Vercel y de la base compartida entre preview y producción. La ráfaga manual de 429 queda documentada en `backend-node/README.md` y no debe lanzarse mientras ambos entornos escriban la misma tabla.
