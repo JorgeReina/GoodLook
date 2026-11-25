@@ -198,7 +198,7 @@ La API reserva. El piloto y el producto escriben en la tabla `appointments` medi
 
 `GET /api/appointments/availability` exige negocio publicado, profesional activo y servicio activo y asignado. `from` y `to` son UTC con milisegundos y la ventana no pasa de siete días. Genera candidatos futuros en pasos de 15 minutos UTC que caben enteros en la jornada de ese día, en la zona IANA del negocio. Acepta un fin exacto a las 24:00. Descarta un hueco que cruce medianoche o un cambio de desfase. En la hora repetida de otoño los dos instantes UTC se calculan por separado.
 
-Resta las citas `booked`, `completed` y `no_show` del perfil y, si el perfil tiene cuenta, las de los demás perfiles de esa cuenta. También resta los cierres `professional_closures` de ese perfil. Las canceladas no ocupan. Si hay más de 100 franjas semanales o más de 5000 intervalos ocupados, responde error en vez de recortar y mostrar huecos falsos. La respuesta es `{ "timezone", "slots": [{ "startAt", "endAt" }] }` y no incluye clientes ni notas. Hay un límite de 30 consultas por minuto y por IP de socket.
+Resta las citas `booked`, `completed` y `no_show` del perfil y, si el perfil tiene cuenta, las de los demás perfiles de esa cuenta. También resta los cierres `professional_closures` de ese perfil. Las canceladas no ocupan. Si hay más de 100 franjas semanales o más de 5000 intervalos ocupados, responde error en vez de recortar y mostrar huecos falsos. La respuesta es `{ "timezone", "slots": [{ "startAt", "endAt" }] }` y no incluye clientes ni notas. Hay un límite de 30 consultas por minuto y por dirección de cliente, con la misma política de identidad que el acceso.
 
 Dos clientes pueden ver el mismo hueco. La reserva no usa esa respuesta como bloqueo.
 

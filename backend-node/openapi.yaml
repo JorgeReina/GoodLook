@@ -505,7 +505,11 @@ paths:
         Ventana máxima de siete días. Los candidatos son futuros, caben en la
         jornada y en un cierre a las 24:00, y van en pasos de 15 minutos UTC.
         Restan citas ocupadas y cierres. No reserva el hueco. Límite de 30
-        peticiones por minuto y por IP del socket.
+        peticiones por minuto y por dirección de cliente. Express deja
+        `trust proxy` desactivado. El cupo IPv6 es el /64; cada IPv4 es una
+        dirección. Con `VERCEL=1` la primera IP de `x-vercel-forwarded-for`
+        (cabecera ausente o inválida, 503); fuera de Vercel, la conexión
+        directa. No se lee `X-Forwarded-For`.
       parameters:
         - { $ref: '#/components/parameters/BusinessIdQuery' }
         - name: professionalId
