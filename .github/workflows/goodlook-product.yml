@@ -37,7 +37,13 @@ jobs:
       - name: Install Chromium
         working-directory: FrontEndGoodLook
         run: npx playwright install --with-deps chromium
-      - name: Test Angular product
+      # Karma ejecuta el producto y el piloto. Los specs de la aplicación
+      # heredada (NgModule, fuera de src/app/product y src/app/pilot) quedan
+      # excluidos a propósito y no se reparan en este flujo. Los 6 que fallan
+      # están en https://github.com/JorgeReina/GoodLook/issues/26
+      # El código heredado está congelado hasta su retirada en
+      # https://github.com/JorgeReina/GoodLook/issues/34
+      - name: Test Angular product and pilot
         working-directory: FrontEndGoodLook
         run: |
           export GOODLOOK_CHROMIUM_PATH="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
@@ -49,7 +55,7 @@ jobs:
           exec "$GOODLOOK_CHROMIUM_PATH" --no-sandbox "$@"
           EOF
           chmod +x "$CHROME_BIN"
-          npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts'
+          npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts' --include='src/app/pilot/**/*.spec.ts'
       - name: MySQL and MariaDB integration
         working-directory: backend-node
         run: |
