@@ -36,11 +36,11 @@ jobs:
       - name: Diagnose preview database
         working-directory: backend-node
         run: node db/preview-ops.mjs diagnose
-      - name: Apply MySQL migrations
+      - name: Apply MariaDB migrations
         working-directory: backend-node
         env:
           GOODLOOK_MIGRATION_TARGET: preview
-          GOODLOOK_MIGRATION_DIALECT: mysql
+          GOODLOOK_MIGRATION_DIALECT: mariadb
         run: node db/migrate.mjs
       - name: Load preview fixtures
         working-directory: backend-node
