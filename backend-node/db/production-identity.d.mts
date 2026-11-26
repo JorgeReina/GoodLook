@@ -2,6 +2,7 @@ export interface DatabaseIdentity {
   host: string;
   database: string;
   user: string;
+  engine?: 'mysql' | 'mariadb';
 }
 
 export type DataRole = 'development' | 'preview' | 'production' | 'undeclared';

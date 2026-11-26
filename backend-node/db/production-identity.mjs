@@ -16,7 +16,9 @@ export function parseDatabaseIdentity(value) {
   const database = typeof value.database === 'string' ? value.database.trim() : '';
   const user = typeof value.user === 'string' ? value.user.trim() : '';
   if (!host || !database || !user) return null;
-  return { host, database, user };
+  const engine = typeof value.engine === 'string' ? value.engine.trim().toLowerCase() : '';
+  if (engine && engine !== 'mysql' && engine !== 'mariadb') return null;
+  return engine ? { host, database, user, engine } : { host, database, user };
 }
 
 export function parseProductionDatabase(value) {

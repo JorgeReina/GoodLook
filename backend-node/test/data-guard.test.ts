@@ -28,6 +28,7 @@ test('the production and preview identities have one configured source each', ()
   assert.deepEqual(readPreviewDatabase(), preview);
   assert.equal(production.host, 'db80496.public.databaseasp.net');
   assert.equal(preview.host, 'db81522.public.databaseasp.net');
+  assert.equal(preview.engine, 'mariadb');
   assert.notEqual(production.host, preview.host);
   assert.notEqual(production.database, preview.database);
   assert.notEqual(production.user, preview.user);

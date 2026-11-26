@@ -12,19 +12,45 @@ import {
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
 export function migrationDialect(env) {
-  const dialect = env.GOODLOOK_MIGRATION_DIALECT ?? 'mysql';
-  if (!['mysql', 'mariadb'].includes(dialect)) throw new Error('Invalid migration dialect');
-  return dialect;
+  if (env.GOODLOOK_MIGRATION_DIALECT !== undefined && env.GOODLOOK_MIGRATION_DIALECT !== '') {
+    if (!['mysql', 'mariadb'].includes(env.GOODLOOK_MIGRATION_DIALECT)) throw new Error('Invalid migration dialect');
+    return env.GOODLOOK_MIGRATION_DIALECT;
+  }
+  if (env.GOODLOOK_MIGRATION_TARGET === 'preview' && readPreviewDatabase()?.engine === 'mariadb') return 'mariadb';
+  return 'mysql';
 }
 
-export async function verifyServerDialect(connection, dialect, options = {}) {
+export async function verifyServerDialect(connection, dialect) {
   const [rows] = await connection.query('SELECT VERSION() AS version');
   const version = rows[0]?.version;
   if (typeof version !== 'string') throw new Error('Cannot determine server dialect');
   const maria = /mariadb/i.test(version);
-  const mysql8 = !maria && /^8\./.test(version);
-  if (options.allowPreviewMysql && mysql8) return;
-  if ((dialect === 'mariadb') !== maria || (!maria && !mysql8)) throw new Error('Server dialect does not match selected migration dialect');
+  if ((dialect === 'mariadb') !== maria || (!maria && !/^8\./.test(version))) throw new Error('Server dialect does not match selected migration dialect');
+}
+
+const tlsFailureCodes = new Set([
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'CERT_UNTRUSTED',
+  'CERT_HAS_EXPIRED',
+  'CERT_NOT_YET_VALID',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'HANDSHAKE_SSL_ERROR',
+]);
+
+/** Fixed text for a failed certificate check. Never includes the URL or password. */
+export function tlsVerificationFailure(error) {
+  for (let current = error; current && typeof current === 'object'; current = current.cause) {
+    const code = typeof current.code === 'string' ? current.code : '';
+    const reason = typeof current.reason === 'string' ? current.reason : '';
+    if (tlsFailureCodes.has(code) || tlsFailureCodes.has(reason)) {
+      return 'TLS certificate could not be verified against the system CA; MYSQL_TLS stays required with rejectUnauthorized=true';
+    }
+  }
+  return null;
 }
 
 export function parseConfig(env) {

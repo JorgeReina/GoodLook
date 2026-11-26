@@ -100,14 +100,18 @@ test('requires verified TLS except explicitly permitted loopback', () => {
 });
 
 test('migration dialect is explicit and server version must match before writes', async () => {
-  const { migrationDialect, verifyServerDialect } = await import('../migrate-lib.mjs');
+  const { migrationDialect, verifyServerDialect, tlsVerificationFailure } = await import('../migrate-lib.mjs');
   assert.equal(migrationDialect({}), 'mysql');
+  assert.equal(migrationDialect({ GOODLOOK_MIGRATION_TARGET: 'preview' }), 'mariadb');
+  assert.equal(migrationDialect({ GOODLOOK_MIGRATION_TARGET: 'preview', GOODLOOK_MIGRATION_DIALECT: 'mariadb' }), 'mariadb');
   assert.equal(migrationDialect({GOODLOOK_MIGRATION_DIALECT:'mariadb'}), 'mariadb');
   assert.throws(() => migrationDialect({GOODLOOK_MIGRATION_DIALECT:'other'}), /dialect/i);
   const server = version => ({ query: async () => [[{version}]] });
   await verifyServerDialect(server('10.11.19-MariaDB-log'), 'mariadb');
   await verifyServerDialect(server('8.4.7'), 'mysql');
-  await verifyServerDialect(server('8.4.7'), 'mariadb', { allowPreviewMysql: true });
   await assert.rejects(() => verifyServerDialect(server('10.11.19-MariaDB-log'), 'mysql'), /dialect/i);
   await assert.rejects(() => verifyServerDialect(server('8.4.7'), 'mariadb'), /dialect/i);
+  assert.match(tlsVerificationFailure({ code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' }), /system CA/);
+  assert.match(tlsVerificationFailure({ code: 'HANDSHAKE_SSL_ERROR', cause: { code: 'DEPTH_ZERO_SELF_SIGNED_CERT' } }), /rejectUnauthorized=true/);
+  assert.equal(tlsVerificationFailure({ code: 'ER_ACCESS_DENIED_ERROR' }), null);
 });

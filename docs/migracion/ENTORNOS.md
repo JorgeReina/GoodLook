@@ -2,7 +2,7 @@
 
 Fecha de la revisión: 2026-11-26. Rama de partida: `work/goodlook-migracion`. Esta revisión versiona las identidades de producción y preview. No cambia variables en Vercel ni en MonsterASP, no despliega y no lee secretos.
 
-La historia [#11](https://github.com/JorgeReina/GoodLook/issues/11) pide una base de preview distinta de la de producción, con TLS y esquema 006, para que las pruebas que escriben no alteren el dominio público. Frontend y QA la necesitan como URL HTTPS en [#15](https://github.com/JorgeReina/GoodLook/issues/15) (PWA en dispositivos), [#14](https://github.com/JorgeReina/GoodLook/issues/14) (recorrido por roles) y [#19](https://github.com/JorgeReina/GoodLook/issues/19) (teclado, zoom y estados). La identidad de preview ya existe (`db81522`) y está en `backend-node/config/preview-database.json`. El preview de Vercel no queda aislado hasta que sus variables apunten a esa URL, con TLS, y el esquema 001–006 esté aplicado.
+La historia [#11](https://github.com/JorgeReina/GoodLook/issues/11) pide una base de preview distinta de la de producción, con TLS y esquema 006, para que las pruebas que escriben no alteren el dominio público. Frontend y QA la necesitan como URL HTTPS en [#15](https://github.com/JorgeReina/GoodLook/issues/15) (PWA en dispositivos), [#14](https://github.com/JorgeReina/GoodLook/issues/14) (recorrido por roles) y [#19](https://github.com/JorgeReina/GoodLook/issues/19) (teclado, zoom y estados). La identidad de preview ya existe (`db81522`, MariaDB 10.11.19, vacía) y está en `backend-node/config/preview-database.json`. El preview de Vercel no queda aislado hasta que sus variables apunten a esa URL, con TLS, y el esquema 001–006 esté aplicado con la serie MariaDB.
 
 ## Diagnóstico
 
@@ -65,7 +65,7 @@ Los tres papeles son `development`, `preview` y `production`. En Vercel se confi
 | `GOODLOOK_ALLOW_PRODUCTION_DATABASE` | sin definir. `YES` solo en una shell local que deba abrir esa identidad a propósito | sin definir | sin definir |
 | `VERCEL`, `VERCEL_ENV` | sin definir | las inyecta la plataforma | las inyecta la plataforma |
 | `GOODLOOK_MIGRATION_TARGET` | `test` o `development` en el migrador local | `preview`, solo en la shell que migra, no en el despliegue | no usarla en el despliegue |
-| `GOODLOOK_MIGRATION_DIALECT` | `mysql` o `mariadb` según el contenedor | `mysql` en la shell que migra (`db81522` es MySQL). `mariadb` solo si `VERSION()` resulta ser MariaDB | no usarla en el despliegue |
+| `GOODLOOK_MIGRATION_DIALECT` | `mysql` o `mariadb` según el contenedor | `mariadb` (el destino `preview` lo usa si no se declara; `db81522` es MariaDB 10.11.19) | no usarla en el despliegue |
 
 `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` queda fuera de Vercel. Solo acompaña una migración consciente de la identidad configurada. `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` tampoco se pone en Vercel: no abre esa identidad si el papel es preview.
 
@@ -94,9 +94,9 @@ El migrador aplica el mismo corte: el destino `preview` solo acepta la identidad
 
 ## Motor de preview frente a producción
 
-Producción (`db80496`) se midió como MariaDB 10.11. Preview (`db81522`) está en MonsterASP Free como MySQL; la versión exacta hay que confirmarla con `VERSION()` (se espera una 8.x). Las series de migración están en `backend-node/db/migrations/` (MySQL) y `backend-node/db/migrations-mariadb/` (MariaDB). Los checksums son independientes: no cambiar de serie sobre una base ya migrada.
+Producción (`db80496`) y preview (`db81522`) son la misma serie: MariaDB 10.11.19 (`10.11.19-MariaDB-log`). El diagnóstico de `db81522` (run [45885563808](https://github.com/JorgeReina/GoodLook/actions/runs/45885563808)) midió `character_set_server=utf8mb4`, `collation_server=utf8mb4_general_ci`, `sql_mode=IGNORE_SPACE,NO_ENGINE_SUBSTITUTION` y 0 tablas. `config/preview-database.json` declara `engine: mariadb` y `version: 10.11`. El destino `preview` de `db/migrate.mjs` aplica `migrations-mariadb/` (el mismo dialecto que producción). No usar la serie MySQL sobre esa base: los checksums son independientes.
 
-Riesgo: las colaciones no son las mismas. MariaDB usa `utf8mb4_unicode_520_ci`; MySQL 8 usa `utf8mb4_0900_ai_ci`. Comparaciones de texto, unicidad e índices pueden diferir. Un ensayo de reservas y de nombres con acentos en preview no demuestra el mismo resultado en producción. Si `GOODLOOK_MIGRATION_DIALECT=mariadb` apunta a un servidor MySQL 8 de preview, el ejecutor acepta ese motor para no bloquear el papel, pero aplica la serie MariaDB: conviene no hacerlo. Para `db81522` usar `GOODLOOK_MIGRATION_DIALECT=mysql` (o dejar el valor por defecto). MonsterASP recomienda TLS `SslMode=Preferred`; esta API, en remoto, sigue exigiendo `MYSQL_TLS=true` con certificado verificado.
+La colación por defecto del servidor es `utf8mb4_general_ci`; las migraciones MariaDB fijan `utf8mb4_unicode_520_ci` en las tablas. No es MySQL 8 ni `utf8mb4_0900_ai_ci`. MonsterASP recomienda TLS `SslMode=Preferred`; esta API, en remoto, sigue exigiendo `MYSQL_TLS=true` con certificado verificado contra la CA del sistema. Si esa verificación falla, el migrador se detiene con un mensaje fijo y no desactiva `rejectUnauthorized`.
 
 ## Migraciones 001 a 006 en la base de preview
 
@@ -124,9 +124,9 @@ await connection.end();
 EOF
 ```
 
-El nombre impreso tiene que ser `db81522`. `Ssl_cipher` tiene que venir informado. `VERSION()` en preview se espera MySQL 8.x, no MariaDB 10.11. Anotar la cadena exacta. Si no hay cifrado de sesión, parar: el arranque de la API exige TLS verificado aunque MonsterASP ofrezca `Preferred`.
+El nombre impreso tiene que ser `db81522`. `Ssl_cipher` tiene que venir informado. `VERSION()` tiene que ser `10.11.19-MariaDB-log`, la misma cadena que producción. Si no hay cifrado de sesión, parar. Si la conexión falla por certificado no verificable, el error del migrador lo dice sin imprimir la URL; no poner `rejectUnauthorized=false`. Esa decisión queda fuera de este código.
 
-3. En el mismo archivo, además de `DATABASE_URL` y `MYSQL_TLS=true`, poner `GOODLOOK_MIGRATION_TARGET=preview` y `GOODLOOK_MIGRATION_DIALECT=mysql`. No poner `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS` ni `NODE_ENV=production`. Ejecutar `node --env-file=.env.preview db/migrate.mjs`.
+3. En el mismo archivo, además de `DATABASE_URL` y `MYSQL_TLS=true`, poner `GOODLOOK_MIGRATION_TARGET=preview` y `GOODLOOK_MIGRATION_DIALECT=mariadb`. El destino `preview` ya elige `mariadb` si el dialecto no se declara. No poner `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS` ni `NODE_ENV=production`. Desde `backend-node` ejecutar `node --env-file=.env.preview db/migrate.mjs`.
 4. Volver a consultar `schema_migrations`: las versiones `001` a `006` con estado `applied`. Si una queda en `applying`, no borrarla ni relanzar a ciegas: el DDL de MySQL confirma a medias. Restaurar no aplica (la base estaba vacía); revisar el esquema y, si sigue siendo desechable, recrearla y repetir.
 5. Borrar `.env.preview` cuando las variables ya estén en Vercel. No pegar la URL en el issue, en el chat ni en el historial de la shell.
 
@@ -142,7 +142,7 @@ Coste consultado el 2026-11-20 en la [lista de precios](https://www.monsterasp.n
 2. La cuenta Free ya aloja `db81522` además de `db80496`. No crear otra base. El plan Free publicado lista una base de 1 GB: si el panel limita el tamaño o el número, no ampliar ni tocar `db80496` desde esta historia.
 3. No reutilizar el usuario ni la contraseña de `db80496` en `db81522`.
 4. Activar el acceso remoto de esa base y dejarlo activo. La API corre en Vercel, no dentro de MonsterASP, y las IPs de salida de Vercel no son una sola. En Premium, una lista blanca de IPs que no cubra a Vercel dejaría el preview sin base. El plan Free publicado no ofrece esa lista. Mantener TLS verificado (`SslMode=Preferred` en el panel; `MYSQL_TLS=true` en la API) y una contraseña propia.
-5. Aplicar las migraciones 001 a 006 como en la sección anterior, con la serie MySQL.
+5. Aplicar las migraciones 001 a 006 como en la sección anterior, con la serie MariaDB.
 6. Si un cambio de plan moviera el host de `db80496`, parar. Producción seguiría apuntando al host viejo y la salvaguarda dejaría de reconocer la base. No forma parte de esta historia cambiar la identidad de producción.
 
 ### Vercel
@@ -168,4 +168,4 @@ Si la protección de despliegue de Vercel está activa, Frontend y QA necesitan 
 
 ## Qué queda fuera
 
-No se han modificado variables, despliegues ni secretos. El PR no cierra [#11](https://github.com/JorgeReina/GoodLook/issues/11): falta el reparto real de variables en Vercel, confirmar `VERSION()` y TLS de `db81522`, y aplicar 001–006 con la serie MySQL.
+No se han modificado variables, despliegues ni secretos. El PR no cierra [#11](https://github.com/JorgeReina/GoodLook/issues/11): falta el reparto real de variables en Vercel y aplicar 001–006 con la serie MariaDB sobre `db81522` (vacía, MariaDB 10.11.19). La verificación TLS estricta contra el certificado de MonsterASP aún no se ha ensayado desde esta rama.
