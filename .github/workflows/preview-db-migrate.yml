@@ -1,0 +1,50 @@
+name: Preview database migrate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cursor/preview-db-migrate-d7f8
+
+permissions:
+  contents: read
+
+jobs:
+  migrate-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: preview
+    env:
+      PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+      MYSQL_TLS: 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: backend-node/package-lock.json
+      - name: Install API dependencies
+        working-directory: backend-node
+        run: npm ci --no-audit --no-fund
+      - name: Guard preview database identity
+        working-directory: backend-node
+        run: node db/preview-ops.mjs guard
+      - name: Diagnose preview database
+        working-directory: backend-node
+        run: node db/preview-ops.mjs diagnose
+      - name: Apply MySQL migrations
+        working-directory: backend-node
+        env:
+          GOODLOOK_MIGRATION_TARGET: preview
+          GOODLOOK_MIGRATION_DIALECT: mysql
+        run: node db/migrate.mjs
+      - name: Load preview fixtures
+        working-directory: backend-node
+        run: node db/preview-ops.mjs seed
+      - name: List tables and row counts
+        working-directory: backend-node
+        run: node db/preview-ops.mjs inventory
