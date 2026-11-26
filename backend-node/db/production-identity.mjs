@@ -1,4 +1,5 @@
-import identity from '../config/production-database.json' with { type: 'json' };
+import productionIdentity from '../config/production-database.json' with { type: 'json' };
+import previewIdentity from '../config/preview-database.json' with { type: 'json' };
 
 function normalizedHost(value) {
   return String(value ?? '').trim().replace(/\.$/, '').toLowerCase();
@@ -9,7 +10,7 @@ function normalizedName(value) {
 }
 
 /** Incomplete configuration is absent. The caller then fails closed. */
-export function parseProductionDatabase(value) {
+export function parseDatabaseIdentity(value) {
   if (!value || typeof value !== 'object') return null;
   const host = typeof value.host === 'string' ? value.host.trim() : '';
   const database = typeof value.database === 'string' ? value.database.trim() : '';
@@ -18,9 +19,18 @@ export function parseProductionDatabase(value) {
   return { host, database, user };
 }
 
+export function parseProductionDatabase(value) {
+  return parseDatabaseIdentity(value);
+}
+
 /** Single source of truth for the production database identity. Not a secret. */
 export function readProductionDatabase() {
-  return parseProductionDatabase(identity);
+  return parseDatabaseIdentity(productionIdentity);
+}
+
+/** Single source of truth for the preview database identity. Not a secret. */
+export function readPreviewDatabase() {
+  return parseDatabaseIdentity(previewIdentity);
 }
 
 export function isLoopbackHost(host) {
@@ -34,6 +44,14 @@ export function matchesProductionDatabase(candidate, production) {
   return normalizedHost(candidate.host) === normalizedHost(production.host)
     || normalizedName(candidate.database) === normalizedName(production.database)
     || normalizedName(candidate.user) === normalizedName(production.user);
+}
+
+/** True when host, database name, and user all match the configured identity. */
+export function matchesDatabaseIdentity(candidate, expected) {
+  if (!expected) return false;
+  return normalizedHost(candidate.host) === normalizedHost(expected.host)
+    && normalizedName(candidate.database) === normalizedName(expected.database)
+    && normalizedName(candidate.user) === normalizedName(expected.user);
 }
 
 const dataRoles = ['development', 'preview', 'production'];
@@ -61,24 +79,30 @@ export function resolveDataRole(env) {
 
 /**
  * Refuse the production identity unless the role is explicitly production,
- * and refuse every non-loopback database when the role was not declared.
- * A missing production identity also refuses preview and any other
- * non-production remote connection. The thrown text never includes the URL.
+ * pin preview to the preview identity, and refuse every non-loopback
+ * database when the role was not declared. A missing production identity
+ * also refuses development remotes. A missing preview identity refuses
+ * preview remotes. The thrown text never includes the URL.
  */
-export function assertDatabaseIsolation(env, identity, production) {
+export function assertDatabaseIsolation(env, identity, production, preview = readPreviewDatabase()) {
   if (env.VERCEL !== undefined && env.VERCEL !== '' && env.VERCEL !== '1') {
     throw new Error('VERCEL must stay unset outside Vercel');
   }
   const role = resolveDataRole(env);
   if (isLoopbackHost(identity.host)) return role;
-  const matches = matchesProductionDatabase(identity, production);
-  if (matches && role === 'preview') throw new Error('Preview cannot use the production database identity');
-  if (matches && env.VERCEL === '1' && env.VERCEL_ENV !== 'production') {
+  const matchesProduction = matchesProductionDatabase(identity, production);
+  if (role === 'preview') {
+    if (matchesProduction) throw new Error('Preview cannot use the production database identity');
+    if (!preview) throw new Error('Preview database identity is not configured; refusing a non-loopback database');
+    if (!matchesDatabaseIdentity(identity, preview)) throw new Error('Preview can only use the preview database identity');
+    return role;
+  }
+  if (matchesProduction && env.VERCEL === '1' && env.VERCEL_ENV !== 'production') {
     throw new Error('VERCEL=1 outside a production deployment cannot use the production database identity');
   }
-  if (matches && role === 'production') return role;
-  if (matches && env.GOODLOOK_ALLOW_PRODUCTION_DATABASE === 'YES' && role !== 'preview') return role;
-  if (matches) throw new Error('Only an explicit production role can use the production database identity');
+  if (matchesProduction && role === 'production') return role;
+  if (matchesProduction && env.GOODLOOK_ALLOW_PRODUCTION_DATABASE === 'YES' && role !== 'preview') return role;
+  if (matchesProduction) throw new Error('Only an explicit production role can use the production database identity');
   if (role === 'undeclared') throw new Error('Database role is not declared; refusing a non-loopback database');
   if (!production && role !== 'production') {
     throw new Error('Production database identity is not configured; refusing a non-loopback database');

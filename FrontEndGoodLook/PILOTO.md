@@ -60,7 +60,7 @@ En Android con Chrome, abrir la URL de pruebas vía HTTPS y usar la instalación
 
 ### Preview aislado
 
-El piloto y el producto llaman a `/api` en el mismo origen. La URL HTTPS que usan Frontend y QA es el alias de la rama en Vercel, y la API de ese despliegue usa las variables del entorno Preview. `APP_ORIGIN` tiene que ser exactamente ese origen, sin barra final. Una URL de un commit concreto envía otro `Origin` y las escrituras responden 403. El reparto de bases y la lista de pasos en MonsterASP y Vercel están en [docs/migracion/ENTORNOS.md](../docs/migracion/ENTORNOS.md). Hasta completarlos, el preview publicado y `https://good-look.vercel.app` siguen pudiendo escribir en la misma base.
+El piloto y el producto llaman a `/api` en el mismo origen. La URL HTTPS que usan Frontend y QA es el alias de la rama en Vercel, y la API de ese despliegue usa las variables del entorno Preview. `APP_ORIGIN` tiene que ser exactamente ese origen, sin barra final. Una URL de un commit concreto envía otro `Origin` y las escrituras responden 403. El código solo deja arrancar el papel preview contra `db81522`. El reparto de variables en Vercel y el esquema 001–006 están en [docs/migracion/ENTORNOS.md](../docs/migracion/ENTORNOS.md). Hasta completarlos, un preview cuya URL siga siendo `db80496` no arranca.
 
 ### Corte propuesto
 

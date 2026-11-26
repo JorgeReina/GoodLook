@@ -10,7 +10,7 @@ try {
   const migrations = await loadMigrations(join(dirname(fileURLToPath(import.meta.url)), dialect === 'mariadb' ? 'migrations-mariadb' : 'migrations'));
   const mysql = await import('mysql2/promise');
   conn = await mysql.createConnection(config);
-  await verifyServerDialect(conn, dialect);
+  await verifyServerDialect(conn, dialect, { allowPreviewMysql: process.env.GOODLOOK_MIGRATION_TARGET === 'preview' });
   const lock = `goodlook:migrate:${createHash('sha256').update(config.database.toLowerCase()).digest('hex').slice(0, 40)}`;
   await applyMigrations(conn, migrations, lock);
   console.log('Migrations completed.');

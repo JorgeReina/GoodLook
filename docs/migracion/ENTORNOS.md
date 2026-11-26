@@ -1,8 +1,8 @@
 # Entornos de datos: desarrollo, preview y producción
 
-Fecha de la revisión: 2026-11-20. Rama de partida: `work/goodlook-migracion` en `ee32d89`. Esta revisión lee el repositorio. No ha creado bases, no ha cambiado variables en Vercel ni en MonsterASP, no ha desplegado y no ha leído secretos.
+Fecha de la revisión: 2026-11-26. Rama de partida: `work/goodlook-migracion`. Esta revisión versiona las identidades de producción y preview. No cambia variables en Vercel ni en MonsterASP, no despliega y no lee secretos.
 
-La historia [#11](https://github.com/JorgeReina/GoodLook/issues/11) pide una base MariaDB de preview distinta de la de producción, con TLS y esquema 006, para que las pruebas que escriben no alteren el dominio público. Frontend y QA la necesitan como URL HTTPS en [#15](https://github.com/JorgeReina/GoodLook/issues/15) (PWA en dispositivos), [#14](https://github.com/JorgeReina/GoodLook/issues/14) (recorrido por roles) y [#19](https://github.com/JorgeReina/GoodLook/issues/19) (teclado, zoom y estados). Este documento deja el código preparado y la lista de acciones manuales. La separación todavía no está hecha hasta que se ejecuten.
+La historia [#11](https://github.com/JorgeReina/GoodLook/issues/11) pide una base de preview distinta de la de producción, con TLS y esquema 006, para que las pruebas que escriben no alteren el dominio público. Frontend y QA la necesitan como URL HTTPS en [#15](https://github.com/JorgeReina/GoodLook/issues/15) (PWA en dispositivos), [#14](https://github.com/JorgeReina/GoodLook/issues/14) (recorrido por roles) y [#19](https://github.com/JorgeReina/GoodLook/issues/19) (teclado, zoom y estados). La identidad de preview ya existe (`db81522`) y está en `backend-node/config/preview-database.json`. El preview de Vercel no queda aislado hasta que sus variables apunten a esa URL, con TLS, y el esquema 001–006 esté aplicado.
 
 ## Diagnóstico
 
@@ -12,9 +12,9 @@ La API arranca en `api/index.ts`, que crea la aplicación de `backend-node/src/r
 
 No hay otro selector de base. `vercel.json` no declara variables ni una URL de base: fija el build del frontend, la redirección `/` → `/producto/` y el rewrite de `/api/:path*` hacia la función. Los dos Compose (`backend-node/compose.integration.yaml` y `compose.mariadb.integration.yaml`) crean una base desechable `goodlook_disposable_test` en `127.0.0.1:33317` con credenciales de prueba. El flujo de GitHub Actions (`.github/workflows/goodlook-product.yml`) usa esos contenedores y no define `DATABASE_URL` de MonsterASP.
 
-El migrador genérico (`backend-node/db/migrate.mjs`) usa la misma `DATABASE_URL` y `GOODLOOK_MIGRATION_TARGET`. El lanzador `db/monsterasp-migrate.mjs` es distinto: ignora `DATABASE_URL` y queda fijado a `db80496.public.databaseasp.net`, base `db80496`, usuario `db80496`. A partir de esta revisión exige `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` y sigue exigiendo un esquema vacío, así que no puede usarse para sembrar la base de preview ni para reescribir la base que ya tiene tablas.
+El migrador genérico (`backend-node/db/migrate.mjs`) usa la misma `DATABASE_URL` y `GOODLOOK_MIGRATION_TARGET`. Con destino `preview` solo admite la identidad de `config/preview-database.json`. El lanzador `db/monsterasp-migrate.mjs` es distinto: ignora `DATABASE_URL` y queda fijado a `db80496.public.databaseasp.net`, base `db80496`, usuario `db80496`. Exige `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` y un esquema vacío, así que no puede usarse para sembrar la base de preview ni para reescribir la base que ya tiene tablas.
 
-`ESTADO.md` registra que el preview de Vercel y la producción `good-look.vercel.app` apuntan a `db80496`. El panel de Vercel no está en el repositorio (`.vercel/` está ignorado) y esta revisión no lo ha consultado. El código, por sí solo, conecta con cualquier URL válida. Hasta esta revisión nada comparaba el host, el nombre o el usuario con `db80496`.
+`ESTADO.md` registra que el preview de Vercel y la producción `good-look.vercel.app` llegaron a apuntar a `db80496`. El panel de Vercel no está en el repositorio (`.vercel/` está ignorado) y esta revisión no lo ha consultado. El código compara host, nombre y usuario con las identidades versionadas: preview solo arranca contra `db81522`; producción sigue siendo `db80496`.
 
 ### Cómo elige la URL de la API el frontend
 
@@ -26,7 +26,7 @@ El frontend legado (`goodlook.service.ts`, acceso y registro antiguos) sigue lla
 
 ### Qué impide hoy que preview use otra base
 
-En el código, nada lo impide: una `DATABASE_URL` distinta en el entorno Preview de Vercel basta para que ese despliegue abra otra base. Lo que hoy los junta es la configuración fuera del repositorio. Si `DATABASE_URL` está definida para todos los entornos, o repetida en Preview y Production, los dos escriben en `db80496`. El frontend no puede elegir otra base por su cuenta, porque no tiene una URL de API propia.
+En el código, el papel `preview` (`GOODLOOK_DATA_ENV=preview` o `VERCEL_ENV=preview`) solo abre la identidad de `config/preview-database.json`. Cualquier otro host remoto, y `db80496` en particular, impide el arranque. Lo que todavía puede juntar los dos entornos es la configuración fuera del repositorio: si Preview sigue usando la URL de producción, la función nueva no arranca. El frontend no puede elegir otra base por su cuenta, porque no tiene una URL de API propia.
 
 Tampoco hay en el repo una URL HTTPS estable de preview. Vercel crea una URL por despliegue y un alias por rama. Las escrituras solo aceptan el origen configurado en `APP_ORIGIN`.
 
@@ -55,16 +55,17 @@ Los tres papeles son `development`, `preview` y `production`. En Vercel se confi
 | Variable | Desarrollo (local / CI) | Preview (Vercel) | Production (Vercel) |
 | --- | --- | --- | --- |
 | `GOODLOOK_DATA_ENV` | `development` en local con Docker. Sin esta variable ni `VERCEL_ENV`, el papel queda sin declarar | `preview` | `production` |
-| `DATABASE_URL` | `mysql://goodlook_test:…@127.0.0.1:33317/goodlook_disposable_test` | URL nueva. Host, nombre y usuario distintos de `db80496` | La URL actual de `db80496.public.databaseasp.net` / `db80496` / `db80496` |
+| `DATABASE_URL` | `mysql://goodlook_test:…@127.0.0.1:33317/goodlook_disposable_test` | URL de `db81522.public.databaseasp.net` / `db81522` / `db81522`, puerto 3306, TLS | La URL actual de `db80496.public.databaseasp.net` / `db80496` / `db80496` |
 | `MYSQL_TLS` | sin definir | `true` | `true` |
 | `MYSQL_ALLOW_INSECURE_LOCAL` | `true` solo en loopback | sin definir | sin definir |
 | `APP_ORIGIN` | `http://localhost:4200` | `https://` + alias estable de la rama, sin barra final | `https://good-look.vercel.app` |
 | `AUTH_LIMIT_SECRET` | el valor de demostración, solo en local | secreto hex nuevo, de al menos 32 bytes, distinto del de producción | el secreto que ya usa producción |
 | Identidad de producción | `backend-node/config/production-database.json` (host, nombre y usuario; no es un secreto) | el mismo archivo, incluido en el despliegue | el mismo archivo |
+| Identidad de preview | `backend-node/config/preview-database.json` (host, puerto, nombre y usuario; no es un secreto) | el mismo archivo | el mismo archivo |
 | `GOODLOOK_ALLOW_PRODUCTION_DATABASE` | sin definir. `YES` solo en una shell local que deba abrir esa identidad a propósito | sin definir | sin definir |
 | `VERCEL`, `VERCEL_ENV` | sin definir | las inyecta la plataforma | las inyecta la plataforma |
 | `GOODLOOK_MIGRATION_TARGET` | `test` o `development` en el migrador local | `preview`, solo en la shell que migra, no en el despliegue | no usarla en el despliegue |
-| `GOODLOOK_MIGRATION_DIALECT` | `mysql` o `mariadb` según el contenedor | `mariadb` en la shell que migra | no usarla en el despliegue |
+| `GOODLOOK_MIGRATION_DIALECT` | `mysql` o `mariadb` según el contenedor | `mysql` en la shell que migra (`db81522` es MySQL). `mariadb` solo si `VERSION()` resulta ser MariaDB | no usarla en el despliegue |
 
 `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES` queda fuera de Vercel. Solo acompaña una migración consciente de la identidad configurada. `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` tampoco se pone en Vercel: no abre esa identidad si el papel es preview.
 
@@ -79,21 +80,29 @@ Al arrancar, y también al limpiar contadores con `cleanup-rate-limits`, la API 
 - Si no hay ninguna de las dos, el papel queda `undeclared`. No se hereda `development`.
 - Si `GOODLOOK_DATA_ENV` contradice un `VERCEL_ENV` de preview o production, el proceso se detiene.
 
-La identidad de producción se lee de `backend-node/config/production-database.json`: host, nombre y usuario. Es la única copia. No es un secreto. Un campo vacío deja la identidad sin configurar.
+Las identidades se leen de `backend-node/config/production-database.json` y `backend-node/config/preview-database.json`: host, nombre y usuario (preview también declara el puerto 3306). Son las únicas copias. No son secretos. Un campo vacío deja esa identidad sin configurar.
 
-Con esa identidad, el proceso se niega a abrirla salvo que el papel sea `production` (`GOODLOOK_DATA_ENV=production` o `VERCEL_ENV=production`). `GOODLOOK_DATA_ENV=development` no basta. La excepción local `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` abre esa identidad fuera de preview; en preview se ignora. `VERCEL=1` sin `VERCEL_ENV=production` tampoco puede abrirla. La comparación no distingue mayúsculas y admite un punto final en el host. El mensaje no incluye la URL ni la contraseña.
+El proceso se niega a abrir la identidad de producción salvo que el papel sea `production` (`GOODLOOK_DATA_ENV=production` o `VERCEL_ENV=production`). `GOODLOOK_DATA_ENV=development` no basta. La excepción local `GOODLOOK_ALLOW_PRODUCTION_DATABASE=YES` abre esa identidad fuera de preview; en preview se ignora. `VERCEL=1` sin `VERCEL_ENV=production` tampoco puede abrirla.
+
+El papel `preview` solo abre la identidad de preview: los tres campos tienen que coincidir. Un host desconocido, un usuario o un nombre distintos, o la identidad de `db80496`, impiden el arranque. La comparación de producción es por host, nombre o usuario (cualquiera basta para bloquear). La de preview exige los tres. No distingue mayúsculas y admite un punto final en el host. El mensaje no incluye la URL ni la contraseña.
 
 Sin papel declarado, cualquier base que no sea loopback (`localhost`, `127.0.0.1` o `::1`) impide el arranque. Un preview sin variables de sistema y con la URL antigua de producción no arranca. El loopback sigue sirviendo para Docker, CI y las pruebas.
 
-Si el archivo de identidad falta o está incompleto, preview, development y un papel sin declarar rechazan toda base remota: no hay forma de demostrar que no es producción. El papel `production` explícito sí puede arrancar, porque parar el dominio público por un archivo ausente sería otro incidente; en ese caso la guarda no clasifica el destino y hay que restaurar el archivo antes de fiarse de preview.
+Si el archivo de producción falta o está incompleto, development y un papel sin declarar rechazan toda base remota. Si el de preview falta o está incompleto, el papel `preview` rechaza toda base remota. El papel `production` explícito sí puede arrancar si falta el archivo de producción, porque parar el dominio público por un archivo ausente sería otro incidente; en ese caso la guarda no clasifica el destino y hay que restaurar el archivo antes de fiarse de preview.
 
-El migrador aplica el mismo corte: los destinos `test`, `development` y `preview` rechazan la identidad configurada, también con `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES`. Sin identidad configurada, un destino que no sea `production` rechaza una base remota. El destino `production` sigue exigiendo esa excepción de migración.
+El migrador aplica el mismo corte: el destino `preview` solo acepta la identidad de `preview-database.json` y rechaza `db80496`. Los destinos `test` y `development` rechazan la identidad de producción, también con `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS=YES`. Sin identidad de producción configurada, un destino que no sea `production` ni `preview` rechaza una base remota. El destino `production` sigue exigiendo esa excepción de migración.
+
+## Motor de preview frente a producción
+
+Producción (`db80496`) se midió como MariaDB 10.11. Preview (`db81522`) está en MonsterASP Free como MySQL; la versión exacta hay que confirmarla con `VERSION()` (se espera una 8.x). Las series de migración están en `backend-node/db/migrations/` (MySQL) y `backend-node/db/migrations-mariadb/` (MariaDB). Los checksums son independientes: no cambiar de serie sobre una base ya migrada.
+
+Riesgo: las colaciones no son las mismas. MariaDB usa `utf8mb4_unicode_520_ci`; MySQL 8 usa `utf8mb4_0900_ai_ci`. Comparaciones de texto, unicidad e índices pueden diferir. Un ensayo de reservas y de nombres con acentos en preview no demuestra el mismo resultado en producción. Si `GOODLOOK_MIGRATION_DIALECT=mariadb` apunta a un servidor MySQL 8 de preview, el ejecutor acepta ese motor para no bloquear el papel, pero aplica la serie MariaDB: conviene no hacerlo. Para `db81522` usar `GOODLOOK_MIGRATION_DIALECT=mysql` (o dejar el valor por defecto). MonsterASP recomienda TLS `SslMode=Preferred`; esta API, en remoto, sigue exigiendo `MYSQL_TLS=true` con certificado verificado.
 
 ## Migraciones 001 a 006 en la base de preview
 
-La serie MariaDB está en `backend-node/db/migrations-mariadb/`: `001_initial`, `002_professional_invitations`, `003_business_visibility`, `004_auth_rate_limits`, `005_product_profiles` y `006_booking_integrity`. El ejecutor las aplica en ese orden, registra checksum y estado, y no reescribe una versión ya aplicada.
+La serie MySQL está en `backend-node/db/migrations/`; la MariaDB, en `migrations-mariadb/`. En ambas: `001_initial`, `002_professional_invitations`, `003_business_visibility`, `004_auth_rate_limits`, `005_product_profiles` y `006_booking_integrity`. El ejecutor las aplica en ese orden, registra checksum y estado, y no reescribe una versión ya aplicada.
 
-1. Crear la base vacía y anotar, fuera del repositorio, su host, nombre, usuario y contraseña. Tienen que ser distintos de `db80496` en los tres primeros.
+1. La identidad de preview ya está creada: host `db81522.public.databaseasp.net`, puerto 3306, base `db81522`, usuario `db81522`. Anotar la contraseña fuera del repositorio. No reutilizar la de `db80496`.
 2. Con el acceso remoto ya permitido, comprobar TLS y la versión sin imprimir la contraseña. Guardar la URL en `backend-node/.env.preview` (el patrón `.env.*` está ignorado) y, desde `backend-node`:
 
 ```bash
@@ -115,9 +124,9 @@ await connection.end();
 EOF
 ```
 
-El nombre impreso tiene que ser el de la base nueva. `Ssl_cipher` tiene que venir informado. `VERSION()` tiene que ser MariaDB 10.11: `db80496` se midió en 10.11.19 y la serie se ensayó ahí. La ayuda pública de MonsterASP describe las bases MySQL nuevas como MariaDB 10.10. Si la versión no es 10.11, parar y revisar antes de migrar. El ejecutor acepta cualquier cadena MariaDB; esta parada es del operador.
+El nombre impreso tiene que ser `db81522`. `Ssl_cipher` tiene que venir informado. `VERSION()` en preview se espera MySQL 8.x, no MariaDB 10.11. Anotar la cadena exacta. Si no hay cifrado de sesión, parar: el arranque de la API exige TLS verificado aunque MonsterASP ofrezca `Preferred`.
 
-3. En el mismo archivo, además de `DATABASE_URL` y `MYSQL_TLS=true`, poner `GOODLOOK_MIGRATION_TARGET=preview` y `GOODLOOK_MIGRATION_DIALECT=mariadb`. No poner `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS` ni `NODE_ENV=production`. Ejecutar `node --env-file=.env.preview db/migrate.mjs`.
+3. En el mismo archivo, además de `DATABASE_URL` y `MYSQL_TLS=true`, poner `GOODLOOK_MIGRATION_TARGET=preview` y `GOODLOOK_MIGRATION_DIALECT=mysql`. No poner `GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS` ni `NODE_ENV=production`. Ejecutar `node --env-file=.env.preview db/migrate.mjs`.
 4. Volver a consultar `schema_migrations`: las versiones `001` a `006` con estado `applied`. Si una queda en `applying`, no borrarla ni relanzar a ciegas: el DDL de MySQL confirma a medias. Restaurar no aplica (la base estaba vacía); revisar el esquema y, si sigue siendo desechable, recrearla y repetir.
 5. Borrar `.env.preview` cuando las variables ya estén en Vercel. No pegar la URL en el issue, en el chat ni en el historial de la shell.
 
@@ -130,13 +139,10 @@ Coste consultado el 2026-11-20 en la [lista de precios](https://www.monsterasp.n
 ### MonsterASP
 
 1. Dejar `db80496` como está. No borrarla, no reutilizar su usuario ni su contraseña, y no cambiar su host.
-2. Confirmar cuántas bases permite la cuenta. El plan Free publicado incluye una base de 1 GB. Si `db80496` ocupa ese hueco, hace falta capacidad nueva:
-   - Hueco ya pagado y libre: 0 USD.
-   - Premium Single, el plan publicado más pequeño con dos bases: 1,95 USD al mes el primer año, facturado por año (23,40 USD), y 2,50 USD al mes al renovar. Incluye dos bases de 2 GB y copias diarias 14 días. Garantía de devolución de 14 días.
-   - Complemento de base adicional, solo sobre Premium: la lista marca 1 USD al mes el primer año y 1,25 USD al mes al renovar. La ayuda del complemento dice que ese extra añade dos bases. El asistente de la cuenta muestra el importe que aplica.
-3. Crear la base con Add database, tipo MySQL 8.0 (MariaDB), datacenter EU, en un hueco distinto del de `db80496`. MonsterASP crea el usuario principal con la base. Anotar el host `db….public.databaseasp.net`, el nombre y el usuario: los tres tienen que diferir de `db80496`.
-4. Activar el acceso remoto de esa base y dejarlo activo. La API corre en Vercel, no dentro de MonsterASP, y las IPs de salida de Vercel no son una sola. En Premium, una lista blanca de IPs que no cubra a Vercel dejaría el preview sin base. El plan Free publicado no ofrece esa lista. Mantener TLS verificado y una contraseña propia.
-5. Aplicar las migraciones 001 a 006 como en la sección anterior.
+2. La cuenta Free ya aloja `db81522` además de `db80496`. No crear otra base. El plan Free publicado lista una base de 1 GB: si el panel limita el tamaño o el número, no ampliar ni tocar `db80496` desde esta historia.
+3. No reutilizar el usuario ni la contraseña de `db80496` en `db81522`.
+4. Activar el acceso remoto de esa base y dejarlo activo. La API corre en Vercel, no dentro de MonsterASP, y las IPs de salida de Vercel no son una sola. En Premium, una lista blanca de IPs que no cubra a Vercel dejaría el preview sin base. El plan Free publicado no ofrece esa lista. Mantener TLS verificado (`SslMode=Preferred` en el panel; `MYSQL_TLS=true` en la API) y una contraseña propia.
+5. Aplicar las migraciones 001 a 006 como en la sección anterior, con la serie MySQL.
 6. Si un cambio de plan moviera el host de `db80496`, parar. Producción seguiría apuntando al host viejo y la salvaguarda dejaría de reconocer la base. No forma parte de esta historia cambiar la identidad de producción.
 
 ### Vercel
@@ -146,7 +152,7 @@ El proyecto ya despliega previews y producción. Las variables por entorno y las
 1. Activar el acceso a las variables de sistema del proyecto, para que existan `VERCEL=1` y `VERCEL_ENV`. No crear esas claves a mano.
 2. En Settings → Environment Variables, quitar de «All Environments» `DATABASE_URL`, `MYSQL_TLS`, `APP_ORIGIN`, `AUTH_LIMIT_SECRET` y `GOODLOOK_DATA_ENV` si estuvieran definidas ahí. Volver a crearlas por entorno. Los valores sensibles se pegan en el panel, no en Git.
 3. Production, sin cambiar la URL de `db80496`: `GOODLOOK_DATA_ENV=production`, `MYSQL_TLS=true`, `APP_ORIGIN=https://good-look.vercel.app`, y el `DATABASE_URL` y el `AUTH_LIMIT_SECRET` que ya usa producción. Redesplegar producción solo si se ha tocado alguna de estas variables. Con el código nuevo, producción sigue arrancando contra `db80496` cuando `VERCEL_ENV=production`.
-4. Preview: `GOODLOOK_DATA_ENV=preview`, `MYSQL_TLS=true`, `DATABASE_URL` de la base nueva, `AUTH_LIMIT_SECRET` distinto (32 bytes hex aleatorios) y `APP_ORIGIN` igual a `https://` más el alias de rama que muestre el último despliegue de `work/goodlook-migracion`. Guardar el alias y pasarlo a Frontend y QA. Es la URL de [#14](https://github.com/JorgeReina/GoodLook/issues/14), [#15](https://github.com/JorgeReina/GoodLook/issues/15) y [#19](https://github.com/JorgeReina/GoodLook/issues/19).
+4. Preview: `GOODLOOK_DATA_ENV=preview`, `MYSQL_TLS=true`, `DATABASE_URL` de `db81522` (host `db81522.public.databaseasp.net`, puerto 3306, base y usuario `db81522`), `AUTH_LIMIT_SECRET` distinto (32 bytes hex aleatorios) y `APP_ORIGIN` igual a `https://` más el alias de rama que muestre el último despliegue de `work/goodlook-migracion`. Guardar el alias y pasarlo a Frontend y QA. Es la URL de [#14](https://github.com/JorgeReina/GoodLook/issues/14), [#15](https://github.com/JorgeReina/GoodLook/issues/15) y [#19](https://github.com/JorgeReina/GoodLook/issues/19).
 5. Development de Vercel, el que usa `vercel dev` y `vercel env pull` sin entorno: no poner la URL de producción ni la de preview. El desarrollo de cada día sigue en Docker, como `PILOTO.md`.
 6. Redesplegar el preview después de guardar las variables. Un despliegue ya creado no las recibe. Si la URL de Preview siguiera siendo la de `db80496`, la función nueva no arranca y el registro muestra `Preview cannot use the production database identity`, sin la contraseña.
 7. Comprobar, sin datos personales: `GET` del catálogo en el alias de preview, una reserva de prueba, y la ausencia de esa cita en `https://good-look.vercel.app`. Confirmar que el esquema de preview tiene `001`–`006` en `applied` y que la conexión usa TLS. Con eso se pueden cerrar los criterios de [#11](https://github.com/JorgeReina/GoodLook/issues/11). Esta revisión no los da por cumplidos.
@@ -162,4 +168,4 @@ Si la protección de despliegue de Vercel está activa, Frontend y QA necesitan 
 
 ## Qué queda fuera
 
-No se han creado ni modificado bases, variables, despliegues ni secretos. El PR no cierra [#11](https://github.com/JorgeReina/GoodLook/issues/11): faltan la base verificada y el reparto real de variables.
+No se han modificado variables, despliegues ni secretos. El PR no cierra [#11](https://github.com/JorgeReina/GoodLook/issues/11): falta el reparto real de variables en Vercel, confirmar `VERSION()` y TLS de `db81522`, y aplicar 001–006 con la serie MySQL.

@@ -1,4 +1,4 @@
-import { assertDatabaseIsolation, readProductionDatabase } from './data-guard.js';
+import { assertDatabaseIsolation, readPreviewDatabase, readProductionDatabase } from './data-guard.js';
 
 export function loadConfig(env: NodeJS.ProcessEnv) {
   const rawPort = env.PORT ?? '3000';
@@ -17,6 +17,6 @@ export function loadConfig(env: NodeJS.ProcessEnv) {
   let user: string;
   try { database = decodeURIComponent(db.pathname.slice(1)); user = decodeURIComponent(db.username); } catch { throw new Error('Invalid DATABASE_URL encoding'); }
   if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
-  const dataRole = assertDatabaseIsolation(env, { host: db.hostname, database, user }, readProductionDatabase());
+  const dataRole = assertDatabaseIsolation(env, { host: db.hostname, database, user }, readProductionDatabase(), readPreviewDatabase());
   return { port, origin: rawOrigin, db, tls, dataRole };
 }

@@ -1,7 +1,13 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { isLoopbackHost, matchesProductionDatabase, readProductionDatabase } from './production-identity.mjs';
+import {
+  isLoopbackHost,
+  matchesDatabaseIdentity,
+  matchesProductionDatabase,
+  readPreviewDatabase,
+  readProductionDatabase,
+} from './production-identity.mjs';
 
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
@@ -11,12 +17,14 @@ export function migrationDialect(env) {
   return dialect;
 }
 
-export async function verifyServerDialect(connection, dialect) {
+export async function verifyServerDialect(connection, dialect, options = {}) {
   const [rows] = await connection.query('SELECT VERSION() AS version');
   const version = rows[0]?.version;
   if (typeof version !== 'string') throw new Error('Cannot determine server dialect');
   const maria = /mariadb/i.test(version);
-  if ((dialect === 'mariadb') !== maria || (!maria && !/^8\./.test(version))) throw new Error('Server dialect does not match selected migration dialect');
+  const mysql8 = !maria && /^8\./.test(version);
+  if (options.allowPreviewMysql && mysql8) return;
+  if ((dialect === 'mariadb') !== maria || (!maria && !mysql8)) throw new Error('Server dialect does not match selected migration dialect');
 }
 
 export function parseConfig(env) {
@@ -38,9 +46,17 @@ export function parseConfig(env) {
   if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
   if (!isLoopbackHost(url.hostname)) {
     const production = readProductionDatabase();
-    if (!production && target !== 'production') throw new Error('Production database identity is not configured; refusing a non-loopback database');
-    if (target !== 'production' && matchesProductionDatabase({ host: url.hostname, database, user }, production)) {
-      throw new Error('Refusing to migrate the production database identity');
+    const preview = readPreviewDatabase();
+    const identity = { host: url.hostname, database, user };
+    if (target === 'preview') {
+      if (matchesProductionDatabase(identity, production)) throw new Error('Refusing to migrate the production database identity');
+      if (!preview) throw new Error('Preview database identity is not configured; refusing a non-loopback database');
+      if (!matchesDatabaseIdentity(identity, preview)) throw new Error('Preview can only migrate the preview database identity');
+    } else {
+      if (!production && target !== 'production') throw new Error('Production database identity is not configured; refusing a non-loopback database');
+      if (target !== 'production' && matchesProductionDatabase(identity, production)) {
+        throw new Error('Refusing to migrate the production database identity');
+      }
     }
   }
   return { host: url.hostname, port, user, password, database, timezone: 'Z', multipleStatements: true,

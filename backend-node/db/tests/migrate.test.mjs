@@ -67,9 +67,10 @@ test('failed DDL leaves a durable applying marker and blocks retry', async () =>
   await assert.rejects(() => applyMigrations(conn, [item], 'testlock'), /Interrupted/);
 });
 
-test('preview migrations accept another database and refuse the production identity', () => {
-  const preview = { ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: 'mysql://preview_user:secret@db99999.public.databaseasp.net/db99999', MYSQL_TLS: 'true', MYSQL_ALLOW_INSECURE_LOCAL: undefined };
-  assert.equal(parseConfig(preview).database, 'db99999');
+test('preview migrations accept only the preview identity and refuse production or unknown hosts', () => {
+  const previewUrl = 'mysql://db81522:secret@db81522.public.databaseasp.net/db81522';
+  const preview = { ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: previewUrl, MYSQL_TLS: 'true', MYSQL_ALLOW_INSECURE_LOCAL: undefined };
+  assert.equal(parseConfig(preview).database, 'db81522');
   const productionUrl = 'mysql://db80496:super-secret-preview@db80496.public.databaseasp.net/db80496';
   for (const target of ['test', 'development', 'preview']) {
     assert.throws(() => parseConfig({
@@ -81,6 +82,7 @@ test('preview migrations accept another database and refuse the production ident
     }), error => error instanceof Error && /production database identity/.test(error.message) && !error.message.includes('super-secret-preview'));
   }
   assert.throws(() => parseConfig({ ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: 'mysql://preview_user:secret@other.example.test/db80496', MYSQL_TLS: 'true' }), /production database identity/);
+  assert.throws(() => parseConfig({ ...base, GOODLOOK_MIGRATION_TARGET: 'preview', DATABASE_URL: 'mysql://preview_user:secret@db99999.public.databaseasp.net/db99999', MYSQL_TLS: 'true' }), /preview database identity/);
   assert.equal(parseConfig({
     ...base,
     GOODLOOK_MIGRATION_TARGET: 'production',
@@ -105,6 +107,7 @@ test('migration dialect is explicit and server version must match before writes'
   const server = version => ({ query: async () => [[{version}]] });
   await verifyServerDialect(server('10.11.19-MariaDB-log'), 'mariadb');
   await verifyServerDialect(server('8.4.7'), 'mysql');
+  await verifyServerDialect(server('8.4.7'), 'mariadb', { allowPreviewMysql: true });
   await assert.rejects(() => verifyServerDialect(server('10.11.19-MariaDB-log'), 'mysql'), /dialect/i);
   await assert.rejects(() => verifyServerDialect(server('8.4.7'), 'mariadb'), /dialect/i);
 });
