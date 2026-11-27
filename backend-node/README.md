@@ -133,7 +133,7 @@ La limpieza no es un cron del proceso. Tras `npm run build`:
 GOODLOOK_RATE_CLEANUP=YES node dist/cleanup-rate-limits.js
 ```
 
-Usa la misma `DATABASE_URL`, `APP_ORIGIN` y TLS que el servicio. Cada ejecución borra como máximo 500 filas cuya ventana empezó hace más de 24 horas, según el reloj UTC de MySQL. Hay que repetirla con un planificador externo. No hay límite duro de tamaño: una distribución de IPs, cuentas diferentes o ejecución insuficiente de la limpieza puede seguir generando muchos registros. No se leen ni registran correos o direcciones IP en claro.
+Usa la misma `DATABASE_URL`, `APP_ORIGIN` y TLS que el servicio. Cada ejecución borra como máximo 500 filas cuya ventana empezó hace más de 24 horas, según el reloj UTC de MySQL. Hay que repetirla con un planificador externo. No hay límite duro de tamaño: una distribución de IPs, cuentas diferentes o ejecución insuficiente de la limpieza puede seguir generando muchos registros. No se leen ni registran correos o direcciones IP en claro. Estas operaciones aún requieren validación de concurrencia en MySQL real.
 
 ## Recursos y rutas
 
