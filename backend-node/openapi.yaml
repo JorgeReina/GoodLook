@@ -9,8 +9,10 @@ info:
 
     Las escrituras comparan la cabecera `Origin` con `APP_ORIGIN`. La sesión
     viaja en la cookie `goodlook_session` (HttpOnly, Secure, SameSite=Strict).
-    Salvo `GET /health`, las respuestas de estas rutas envían
-    `Cache-Control: no-store`.
+    Salvo `GET /health` y los GET públicos de catálogo (`/api/catalog` y
+    los listados del piloto `/api/businesses` y `/api/services`), las
+    respuestas de estas rutas envían `Cache-Control: no-store`. Los 200
+    de catálogo público envían `public, s-maxage=60, stale-while-revalidate=300`.
 
     Hay dos familias. El piloto usa `/api/appointments` y el catálogo de
     `/api/businesses`. El producto usa `/api/catalog`, `/api/bookings`,
@@ -163,11 +165,19 @@ paths:
       operationId: getApiBusinesses
       security: []
       summary: Negocios publicados del catálogo de piloto
+      parameters:
+        - { $ref: '#/components/parameters/CatalogPage' }
+        - { $ref: '#/components/parameters/CatalogLimit' }
       responses:
-        '400': { $ref: '#/components/responses/InvalidJson' }
+        '400': { $ref: '#/components/responses/CatalogError' }
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '200':
           description: Solo `id`, `name` y `timezone` de negocios con `is_public`.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+            X-Has-More: { $ref: '#/components/headers/XHasMore' }
+            Link: { $ref: '#/components/headers/CatalogNextLink' }
+            Access-Control-Expose-Headers: { $ref: '#/components/headers/CatalogExposeHeaders' }
           content:
             application/json:
               schema:
@@ -252,10 +262,17 @@ paths:
           in: query
           required: true
           schema: { $ref: '#/components/schemas/Uuid' }
+        - { $ref: '#/components/parameters/CatalogPage' }
+        - { $ref: '#/components/parameters/CatalogLimit' }
       responses:
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '200':
           description: Lista de servicios activos.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+            X-Has-More: { $ref: '#/components/headers/XHasMore' }
+            Link: { $ref: '#/components/headers/CatalogNextLink' }
+            Access-Control-Expose-Headers: { $ref: '#/components/headers/CatalogExposeHeaders' }
           content:
             application/json:
               schema:
@@ -444,27 +461,87 @@ paths:
       operationId: getApiCatalogBusinesses
       security: []
       summary: Fichas publicadas, también sin oferta
+      parameters:
+        - { $ref: '#/components/parameters/CatalogPage' }
+        - { $ref: '#/components/parameters/CatalogLimit' }
       responses:
-        '400': { $ref: '#/components/responses/InvalidJson' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '200':
           description: Negocios con `is_public`.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+            X-Has-More: { $ref: '#/components/headers/XHasMore' }
+            Link: { $ref: '#/components/headers/CatalogNextLink' }
+            Access-Control-Expose-Headers: { $ref: '#/components/headers/CatalogExposeHeaders' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/PublicBusiness' }
+  /api/catalog/businesses/{id}:
+    get:
+      tags: [catalogo-publico]
+      operationId: getApiCatalogBusinessesById
+      security: []
+      summary: Ficha publicada por id
+      description: |
+        El mismo objeto `PublicBusiness` que un elemento de `GET /api/catalog/businesses`
+        (`id`, `name`, `sector`, `address`, `timezone`). El `id` es UUID, como en el resto
+        de `/api/catalog`. `0`, negativos, decimales, texto o enteros que no son UUID
+        responden 400. La consulta exige `is_public=TRUE`. Un negocio inexistente o
+        privado responde el mismo 404. No coincide con `/services` ni `/professionals`.
+      parameters: [{ $ref: '#/components/parameters/BusinessId' }]
+      responses:
+        '413': { $ref: '#/components/responses/RequestTooLarge' }
+        '200':
+          description: Ficha pública.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBusiness' }
+        '400':
+          description: El id no es un UUID.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CatalogNoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [invalid_input] }
+        '404':
+          description: No existe o no está publicado.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CatalogNoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [not_found] }
   /api/catalog/businesses/{id}/services:
     get:
       tags: [catalogo-publico]
       operationId: getApiCatalogBusinessesByIdServices
       security: []
       summary: Oferta reservable de un negocio publicado
-      parameters: [{ $ref: '#/components/parameters/BusinessId' }]
+      parameters:
+        - { $ref: '#/components/parameters/BusinessId' }
+        - { $ref: '#/components/parameters/CatalogPage' }
+        - { $ref: '#/components/parameters/CatalogLimit' }
       responses:
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '200':
           description: Servicios activos con profesional vinculado, asignación y horario.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+            X-Has-More: { $ref: '#/components/headers/XHasMore' }
+            Link: { $ref: '#/components/headers/CatalogNextLink' }
+            Access-Control-Expose-Headers: { $ref: '#/components/headers/CatalogExposeHeaders' }
           content:
             application/json:
               schema:
@@ -484,10 +561,17 @@ paths:
           in: query
           required: true
           schema: { $ref: '#/components/schemas/Uuid' }
+        - { $ref: '#/components/parameters/CatalogPage' }
+        - { $ref: '#/components/parameters/CatalogLimit' }
       responses:
         '413': { $ref: '#/components/responses/RequestTooLarge' }
         '200':
           description: Profesionales activos, vinculados y con horario.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+            X-Has-More: { $ref: '#/components/headers/XHasMore' }
+            Link: { $ref: '#/components/headers/CatalogNextLink' }
+            Access-Control-Expose-Headers: { $ref: '#/components/headers/CatalogExposeHeaders' }
           content:
             application/json:
               schema:
@@ -1229,6 +1313,17 @@ components:
       in: query
       required: true
       schema: { $ref: '#/components/schemas/Uuid' }
+    CatalogPage:
+      name: page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, default: 1 }
+    CatalogLimit:
+      name: limit
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      description: La consulta pide `limit+1` filas y recorta el array a `limit`.
     From:
       name: from
       in: query
@@ -1239,6 +1334,22 @@ components:
       in: query
       required: true
       schema: { $ref: '#/components/schemas/UtcTimestamp' }
+  headers:
+    PublicCatalogCache:
+      description: Caché de borde. Los 400 y 404 de `/api/catalog` usan `no-store`.
+      schema: { type: string, enum: ['public, s-maxage=60, stale-while-revalidate=300'] }
+    XHasMore:
+      description: Si hay otra página. El cuerpo sigue siendo un array.
+      schema: { type: string, enum: ['true', 'false'] }
+    CatalogNextLink:
+      description: Solo si `X-Has-More` es true. Ruta relativa, sin Host.
+      schema: { type: string }
+    CatalogExposeHeaders:
+      description: Para que el navegador lea las cabeceras si hay CORS.
+      schema: { type: string, enum: ['X-Has-More, Link'] }
+    CatalogNoStore:
+      description: Errores de catálogo público. No cachear.
+      schema: { type: string, enum: [no-store] }
   responses:
     ErrorInvalid:
       description: Entrada no válida.

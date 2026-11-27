@@ -142,6 +142,10 @@ El build del frontend legado pasó con avisos usando Node 24 fuera de la matriz 
 - Se añadió un flujo de GitHub Actions para compilación, pruebas Angular y Node, integración Docker en ambos dialectos y aceptación Playwright. En local pasaron 21 pruebas Angular, 105 de API, 33 de base de datos, cinco integraciones por motor y cuatro recorridos Playwright. Chromium comprobó la instalabilidad, la recarga sin red, la ausencia de respuestas de API en la caché, el cierre de sesión y la actualización explícita.
 - Pendientes para la publicación: registrar instalación y actualización en Android con Chrome e iOS con Safari físicos sobre HTTPS aislado, ejecutar GitHub Actions y aprobar el PR de entrega. Esta tanda se comprobó localmente con el esquema 006.
 
+## Catálogo público: tope y caché de borde
+
+- Los GET de `/api/catalog/businesses`, `/services` y `/professionals` (y los listados públicos del piloto en `/api/businesses` y `/api/services`) aplican `LIMIT`/`OFFSET`, validan `page` y `limit` (50/100) y, en 200, envían `s-maxage` con `stale-while-revalidate`. El array JSON no cambia de forma. Las rutas autenticadas de catálogo siguen en `private, no-store`. Contrato en [CATALOGO.md](CATALOGO.md).
+
 ## Limitadores detrás de Vercel (20-11-2026)
 
 - Los limitadores de acceso (registro e inicio de sesión) y de disponibilidad dejan de usar la IP del socket cuando `VERCEL=1`. En ese modo la clave es la primera IP de `x-vercel-forwarded-for`, la cabecera que el borde de Vercel fija y que no se sustituye por `X-Forwarded-For`. `trust proxy` sigue apagado. Sin `VERCEL=1` se mantiene la IP del socket y se ignoran las cabeceras de reenvío. Una cabecera ausente o inválida en Vercel responde 503, sin caer al socket compartido.
