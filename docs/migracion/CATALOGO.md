@@ -1,10 +1,12 @@
 # Contrato del catálogo público
 
-Los listados públicos de fichas y oferta viven en `/api/catalog`. El piloto conserva los GET de `/api/businesses` y `/api/services`. No hay OpenAPI en este repositorio.
+Los listados públicos de fichas y oferta viven en `/api/catalog`. El piloto conserva los GET de `/api/businesses` y `/api/services`. El contrato de rutas también está en `backend-node/openapi.yaml`.
 
 ## Forma de la respuesta
 
 El cuerpo de un listado correcto sigue siendo un **array JSON**. No se envuelve en `{items,total}`. El frontend de producto (`GET /api/catalog/businesses`, `/services`, `/professionals`) y el piloto (`GET /api/businesses`, `GET /api/services`) no cambian de tipo.
+
+`GET /api/catalog/businesses/{id}` no es un listado: responde un **objeto** `PublicBusiness` (los mismos campos que un elemento del listado: `id`, `name`, `sector`, `address`, `timezone`). Sirve para abrir una ficha sin depender de que el negocio esté en la primera página del listado. Si el id no es un UUID válido, **400** `{ "code": "invalid_input" }`. Si no existe o no está publicado, **404** `{ "code": "not_found" }` (la consulta exige `is_public=TRUE` en SQL; no se distinguen ambos casos). No pagina ni envía `X-Has-More`/`Link`.
 
 Si hay más filas que el tamaño de página, la respuesta se corta. El cuerpo no indica si hay continuación: eso va en cabeceras.
 
@@ -40,6 +42,7 @@ Ejemplos:
 ```
 GET /api/catalog/businesses
 GET /api/catalog/businesses?page=2&limit=20
+GET /api/catalog/businesses/{id}
 GET /api/catalog/businesses/{id}/services?limit=50
 GET /api/catalog/businesses/{id}/professionals?serviceId={id}&page=1&limit=50
 ```
@@ -48,7 +51,7 @@ GET /api/catalog/businesses/{id}/professionals?serviceId={id}&page=1&limit=50
 
 ## Caché
 
-Una respuesta **200** de listado público lleva:
+Una respuesta **200** de listado público o de `GET /api/catalog/businesses/{id}` lleva:
 
 ```
 Cache-Control: public, s-maxage=60, stale-while-revalidate=300

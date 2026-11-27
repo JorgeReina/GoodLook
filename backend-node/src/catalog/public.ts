@@ -19,6 +19,16 @@ const offers = `FROM businesses b JOIN services s ON s.business_id=b.id AND s.ac
   JOIN memberships m ON m.business_id=p.business_id AND m.user_id=p.user_id AND m.status='active'
   WHERE b.is_public=TRUE AND EXISTS (SELECT 1 FROM working_hours h WHERE h.business_id=p.business_id AND h.professional_id=p.id)`;
 
+function toPublicBusiness(row: RowDataPacket) {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    sector: (row.sector ?? null) as string | null,
+    address: (row.address ?? null) as string | null,
+    timezone: row.timezone as string,
+  };
+}
+
 function sendPublic(req: Request, res: Response, page: NonNullable<ReturnType<typeof parsePageLimit>>, rows: unknown[]) {
   const { items, hasMore } = takePage(rows, page);
   applyCatalogPageHeaders(req, res, page, hasMore);
@@ -44,7 +54,18 @@ export function publicCatalogRoutes(pool: Pool) {
       'SELECT id,name,sector,address,timezone FROM businesses WHERE is_public=TRUE ORDER BY name,id LIMIT ? OFFSET ?',
       [probeLimit(page), page.offset],
     );
-    sendPublic(req, res, page, rows);
+    sendPublic(req, res, page, rows.map(toPublicBusiness));
+  });
+  router.get('/businesses/:id', async (req, res) => {
+    const businessId = req.params.id.toLowerCase();
+    if (!uuid.test(businessId)) { sendCatalogError(res, 400, 'invalid_input'); return; }
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT id,name,sector,address,timezone FROM businesses WHERE id=? AND is_public=TRUE',
+      [businessId],
+    );
+    if (!rows[0]) { sendCatalogError(res, 404, 'not_found'); return; }
+    res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
+    res.json(toPublicBusiness(rows[0]));
   });
   router.get('/businesses/:id/services', async (req, res) => {
     const businessId = req.params.id.toLowerCase();

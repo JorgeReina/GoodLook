@@ -157,6 +157,7 @@ Hay dos familias conviviendo. El piloto sigue usando el catálogo y las citas de
 | `GET /api/professionals?businessId=` | No | Profesionales activos de un negocio publicado: `id`, `businessId`, `displayName`. |
 | `POST /api/professionals` | Sí | Crea un perfil sin cuenta vinculada. Owner/admin. `201`. No envía correo. |
 | `GET /api/catalog/businesses` | No | Fichas publicadas, también las que se quedan sin oferta. |
+| `GET /api/catalog/businesses/:id` | No | Una ficha publicada. Mismos campos que un elemento del listado. `404` si no existe o no está pública. |
 | `GET /api/catalog/businesses/:id/services` | No | Oferta activa reservable de ese negocio. |
 | `GET /api/catalog/businesses/:id/professionals?serviceId=` | No | Profesionales vinculados, con membresía, asignación y horario, para ese servicio. |
 | `GET /api/me/memberships` | Sí | Pertenencias activas de la sesión. |

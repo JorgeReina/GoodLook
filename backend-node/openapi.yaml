@@ -479,6 +479,27 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/PublicBusiness' }
+  /api/catalog/businesses/{id}:
+    get:
+      tags: [catalogo-publico]
+      operationId: getApiCatalogBusinessesById
+      security: []
+      summary: Ficha publicada por id
+      description: |
+        El mismo objeto `PublicBusiness` que un elemento de `GET /api/catalog/businesses`.
+        La consulta exige `is_public=TRUE`. Un negocio inexistente o privado responde el mismo 404.
+      parameters: [{ $ref: '#/components/parameters/BusinessId' }]
+      responses:
+        '413': { $ref: '#/components/responses/RequestTooLarge' }
+        '200':
+          description: Ficha pública.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/PublicCatalogCache' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBusiness' }
+        '400': { $ref: '#/components/responses/CodeInvalid' }
+        '404': { $ref: '#/components/responses/CodeNotFound' }
   /api/catalog/businesses/{id}/services:
     get:
       tags: [catalogo-publico]

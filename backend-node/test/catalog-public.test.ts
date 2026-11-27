@@ -9,6 +9,8 @@ import { PUBLIC_CATALOG_CACHE } from '../src/http/cache-control.js';
 import { PAGE_EXPOSE_HEADERS } from '../src/http/page-headers.js';
 
 const business = '231c2e85-cba6-44e3-a803-fac58a3f7ff4';
+const unpublished = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+const missing = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
 const service = 'd5502df6-1f29-47b8-8af4-d2101326580f';
 const user: User = { id: '4c95e891-d8b5-40cb-93c9-b1429db9a71d', email: 'a@example.test', displayName: 'A', passwordHash: 'x' };
 const auth: AuthStore = {
@@ -38,6 +40,15 @@ const pool = {
     queries.push({ sql, params });
     if (sql.includes('SELECT id FROM businesses')) return [[{ id: business }], []];
     if (sql.includes('SELECT id,name,sector,address,timezone')) {
+      if (sql.includes('WHERE id=?')) {
+        const [id] = params as [string];
+        const publishedOnly = /is_public\s*=\s*(?:TRUE|1)/i.test(sql);
+        if (id === unpublished) {
+          return [publishedOnly ? [] : [{ id: unpublished, name: 'Hidden', sector: null, address: null, timezone: 'UTC' }], []];
+        }
+        const found = businesses.find(item => item.id === id);
+        return [found ? [found] : [], []];
+      }
       const [limit, offset] = params as [number, number];
       return [businesses.slice(offset, offset + limit), []];
     }
@@ -158,6 +169,41 @@ test('forged Host and X-Forwarded-Host do not appear in Link', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.link, '</api/catalog/businesses?page=2&limit=2>; rel="next"');
   assert.doesNotMatch(response.link ?? '', /evil\.example|https?:\/\//i);
+});
+
+test('GET /api/catalog/businesses/:id returns a published PublicBusiness and cache headers', async () => {
+  queries.length = 0;
+  const response = await fetch(`${base}/api/catalog/businesses/${business.toUpperCase()}`);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), PUBLIC_CATALOG_CACHE);
+  assert.deepEqual(await response.json(), businesses.find(item => item.id === business));
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /is_public\s*=\s*(?:TRUE|1)/i);
+  assert.match(queries[0].sql, /WHERE\s+id\s*=\s*\?/i);
+  assert.deepEqual(queries[0].params, [business]);
+});
+
+test('GET /api/catalog/businesses/:id is 404 for unpublished or missing and 400 for a bad id', async () => {
+  queries.length = 0;
+  const hidden = await fetch(`${base}/api/catalog/businesses/${unpublished}`);
+  assert.equal(hidden.status, 404);
+  assert.deepEqual(await hidden.json(), { code: 'not_found' });
+  assert.equal(hidden.headers.get('cache-control'), 'no-store');
+  assert.match(queries[0].sql, /is_public\s*=\s*(?:TRUE|1)/i);
+  assert.deepEqual(queries[0].params, [unpublished]);
+
+  queries.length = 0;
+  const absent = await fetch(`${base}/api/catalog/businesses/${missing}`);
+  assert.equal(absent.status, 404);
+  assert.deepEqual(await absent.json(), { code: 'not_found' });
+  assert.equal(absent.headers.get('cache-control'), 'no-store');
+
+  queries.length = 0;
+  const invalid = await fetch(`${base}/api/catalog/businesses/not-a-uuid`);
+  assert.equal(invalid.status, 400);
+  assert.deepEqual(await invalid.json(), { code: 'invalid_input' });
+  assert.equal(invalid.headers.get('cache-control'), 'no-store');
+  assert.equal(queries.length, 0);
 });
 
 test('public catalog rejects invalid pagination with the centralized error body', async () => {
