@@ -10,13 +10,14 @@ const outputDir = fileURLToPath(new URL('../dist/front-end-good-look/producto/',
 
 export async function startIsolatedProduct() {
   await stat(join(outputDir, 'index.html'));
-  const { createRuntimeApp } = await import('../../backend-node/dist/runtime.js');
+  const { createRuntime } = await import('../../backend-node/dist/runtime.js');
   const ready = Promise.withResolvers();
   const stop = Promise.withResolvers();
   const lifetime = withNewDemo('mysql', async capability => {
     await migrateDemo(capability);
     const host = express();
     let api;
+    let pool;
     let activeDir = outputDir;
     let assets = express.static(activeDir);
     host.use((req, res, next) => req.path.startsWith('/api/') ? api(req, res, next) : next());
@@ -36,12 +37,14 @@ export async function startIsolatedProduct() {
         server.once('error', reject);
       });
       const origin = 'http://127.0.0.1:' + server.address().port;
-      api = createRuntimeApp({
+      const runtime = createRuntime({
         APP_ORIGIN: origin,
         DATABASE_URL: 'mysql://goodlook_test:local_test_only_password@127.0.0.1:33317/goodlook_disposable_test',
         MYSQL_ALLOW_INSECURE_LOCAL: 'true',
         AUTH_LIMIT_SECRET: randomBytes(32).toString('hex'),
       });
+      pool = runtime.pool;
+      api = runtime.app;
       ready.resolve({
         origin, url: origin + '/producto/', outputDir,
         setOutputDir(path) {
@@ -59,6 +62,7 @@ export async function startIsolatedProduct() {
           server.closeAllConnections();
         });
       }
+      if (pool) await pool.end();
     }
   });
   void lifetime.catch(ready.reject);
