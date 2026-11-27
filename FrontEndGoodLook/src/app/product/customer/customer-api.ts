@@ -78,6 +78,10 @@ export class CustomerApi {
     );
   }
 
+  business(id: string) {
+    return this.http.get<PublicBusiness>(this.businessUrl(id));
+  }
+
   services(businessId: string) {
     return this.http.get<CatalogService[]>(this.businessUrl(businessId) + '/services');
   }

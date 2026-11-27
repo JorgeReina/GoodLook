@@ -57,10 +57,14 @@ describe('Recorrido cliente de producto', () => {
       request.params.get('serviceId') === service.id && request.params.get('professionalId') === professional.id);
   }
 
+  function flushBusinessCatalog() {
+    http.expectOne('/api/catalog/businesses/studio').flush(business);
+    http.expectOne('/api/catalog/businesses/studio/services').flush([service]);
+  }
+
   async function startBooking() {
     await harness.navigateByUrl('/reservar/studio');
-    http.expectOne('/api/catalog/businesses').flush([business]);
-    http.expectOne('/api/catalog/businesses/studio/services').flush([service]);
+    flushBusinessCatalog();
     render();
     http.expectNone(request => request.url.includes('/professionals'));
     choose('Servicio', 'cut');
@@ -81,11 +85,52 @@ describe('Recorrido cliente de producto', () => {
     expect(content().querySelector('a[href="/negocios/studio"]')?.textContent).toContain('Estudio de prueba');
 
     await harness.navigateByUrl('/negocios/studio');
-    http.expectOne('/api/catalog/businesses').flush([business]);
-    http.expectOne('/api/catalog/businesses/studio/services').flush([service]);
+    flushBusinessCatalog();
     render();
     expect(content().textContent).toContain('Corte');
     expect(content().querySelector('a[href="/reservar/studio?servicio=cut"]')).not.toBeNull();
+  });
+
+  it('abre un negocio que no aparece en la primera página del listado', async () => {
+    const other = { ...business, id: 'otra', name: 'Otra ficha' };
+    await harness.navigateByUrl('/');
+    http.expectOne('/api/catalog/businesses').flush([other], { headers: { 'X-Has-More': 'true' } });
+    render();
+    expect(content().querySelector('a[href="/negocios/studio"]')).toBeNull();
+
+    await harness.navigateByUrl('/negocios/studio');
+    flushBusinessCatalog();
+    render();
+    expect(content().querySelector('h1')?.textContent).toContain('Estudio de prueba');
+    expect(content().textContent).toContain('Corte');
+
+    await harness.navigateByUrl('/reservar/studio');
+    flushBusinessCatalog();
+    render();
+    expect(content().textContent).toContain('Estudio de prueba');
+    expect(content().querySelector('select[aria-label="Servicio"]')).not.toBeNull();
+  });
+
+  it('trata el 404 de la ficha como no encontrado y deja reintentar un error de red', async () => {
+    await harness.navigateByUrl('/negocios/studio');
+    http.expectOne('/api/catalog/businesses/studio').flush({ code: 'not_found' }, { status: 404, statusText: 'Not Found' });
+    render();
+    expect(content().textContent).toContain('El negocio no está disponible');
+    http.expectNone('/api/catalog/businesses/studio/services');
+
+    await harness.navigateByUrl('/reservar/studio');
+    http.expectOne('/api/catalog/businesses/studio').flush({ code: 'invalid_input' }, { status: 400, statusText: 'Bad Request' });
+    render();
+    expect(content().textContent).toContain('El negocio no está disponible');
+
+    await harness.navigateByUrl('/negocios/studio');
+    http.expectOne('/api/catalog/businesses/studio').error(new ProgressEvent('error'));
+    render();
+    expect(content().textContent).toContain('No pudimos cargar la ficha');
+    button('Volver a intentar').click();
+    flushBusinessCatalog();
+    render();
+    expect(content().textContent).toContain('Corte');
   });
 
   it('mantiene la clave y el cuerpo al reintentar una reserva de resultado incierto', async () => {
@@ -157,8 +202,7 @@ describe('Recorrido cliente de producto', () => {
   it('descarta la consulta anterior cuando se elige otro profesional', async () => {
     const second = { ...professional, id: 'bea', displayName: 'Bea' };
     await harness.navigateByUrl('/reservar/studio?servicio=cut');
-    http.expectOne('/api/catalog/businesses').flush([business]);
-    http.expectOne('/api/catalog/businesses/studio/services').flush([service]);
+    flushBusinessCatalog();
     http.expectOne('/api/catalog/businesses/studio/professionals?serviceId=cut').flush([professional, second]);
     render();
 
@@ -185,8 +229,7 @@ describe('Recorrido cliente de producto', () => {
     sessionUser.set(user);
     sessionStatus.set('active');
     await harness.navigateByUrl('/reservar/studio');
-    http.expectOne('/api/catalog/businesses').flush([business]);
-    http.expectOne('/api/catalog/businesses/studio/services').flush([service]);
+    flushBusinessCatalog();
     render();
     http.expectOne('/api/catalog/businesses/studio/professionals?serviceId=cut').flush([professional]);
     render();

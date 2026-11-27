@@ -41,4 +41,12 @@ describe('CustomerApi: catálogo de negocios', () => {
     request.flush([salon], { headers: { 'X-Has-More': 'FALSE' } });
     await expectAsync(second).toBeResolvedTo({ items: [salon], hasMore: false });
   });
+
+  it('pide un negocio por id sin confundirlo con el listado', async () => {
+    const result = firstValueFrom(api.business(studio.id));
+    const request = http.expectOne('/api/catalog/businesses/studio');
+    expect(request.request.method).toBe('GET');
+    request.flush(studio);
+    await expectAsync(result).toBeResolvedTo(studio);
+  });
 });

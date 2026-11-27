@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { Page, Response } from '@playwright/test';
 import { expect, test } from './product-fixture';
-import { allDayHours, syntheticCredentials, write } from './product-data';
+import { allDayHours, stubCatalogBusinessGet, syntheticCredentials, write } from './product-data';
 
 function responseTo(page: Page, path: string, method: string) {
   return page.waitForResponse(response =>
@@ -29,6 +29,7 @@ test('recorre Gestión, invitación, reserva y consulta de las citas', async ({ 
   const owner = await browser.newContext(options);
   const professional = await browser.newContext(options);
   const customer = await browser.newContext(options);
+  await stubCatalogBusinessGet(customer, product.origin);
   try {
     const manager = await owner.newPage();
     await test.step('crear una oferta privada', async () => {

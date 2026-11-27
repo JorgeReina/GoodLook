@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, injec
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin, type Subscription } from 'rxjs';
+import { map, type Subscription, switchMap } from 'rxjs';
 import type { PublicBusiness } from '../api/contracts';
 import { ProductConnection } from '../install/connection.service';
 import { SessionService } from '../session.service';
@@ -100,16 +100,11 @@ export class BookingPage {
     this.business.set(null);
     this.services.set([]);
     this.staff.set([]);
-    this.catalogRequest = forkJoin({
-      businesses: this.api.businesses(),
-      services: this.api.services(draft.businessId),
-    }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
-      next: ({ businesses, services }) => {
-        const business = businesses.items.find(item => item.id === draft.businessId);
-        if (!business) {
-          this.catalogState.set('missing');
-          return;
-        }
+    this.catalogRequest = this.api.business(draft.businessId).pipe(
+      switchMap(business => this.api.services(draft.businessId).pipe(map(services => ({ business, services })))),
+      takeUntilDestroyed(this.destroy),
+    ).subscribe({
+      next: ({ business, services }) => {
         this.business.set(business);
         this.timezone.set(business.timezone);
         this.services.set(services);
