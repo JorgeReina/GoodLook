@@ -1,6 +1,18 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
+import { map } from 'rxjs';
 import type { PublicBusiness } from '../api/contracts';
+
+export const CATALOG_PAGE_SIZE = 50;
+
+export interface CatalogListPage<T> {
+  items: T[];
+  hasMore: boolean;
+}
+
+function catalogHasMore(headers: HttpHeaders): boolean {
+  return headers.get('X-Has-More')?.trim().toLowerCase() === 'true';
+}
 
 export interface Quote {
   priceCents: number;
@@ -51,8 +63,23 @@ export interface CustomerAppointment extends BookingReceipt {
 export class CustomerApi {
   private readonly http = inject(HttpClient);
 
-  businesses() {
-    return this.http.get<PublicBusiness[]>('/api/catalog/businesses');
+  businesses(page = 1) {
+    const options = {
+      observe: 'response' as const,
+      params: page > 1
+        ? new HttpParams({ fromObject: { page: String(page), limit: String(CATALOG_PAGE_SIZE) } })
+        : undefined,
+    };
+    return this.http.get<PublicBusiness[]>('/api/catalog/businesses', options).pipe(
+      map(response => ({
+        items: response.body ?? [],
+        hasMore: catalogHasMore(response.headers),
+      } satisfies CatalogListPage<PublicBusiness>)),
+    );
+  }
+
+  business(id: string) {
+    return this.http.get<PublicBusiness>(this.businessUrl(id));
   }
 
   services(businessId: string) {

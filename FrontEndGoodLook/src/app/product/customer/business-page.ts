@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, startWith, Subject, switchMap } from 'rxjs';
+import { catchError, map, of, startWith, Subject, switchMap } from 'rxjs';
 import type { PublicBusiness } from '../api/contracts';
 import { StatusMessage } from '../shared/status-message';
 import { type CatalogService, CustomerApi } from './customer-api';
@@ -73,12 +73,11 @@ export class BusinessPage {
           this.business.set(null);
           this.state.set('loading');
           const id = (params.get('id') ?? '').toLowerCase();
-          return forkJoin({ businesses: this.api.businesses(), services: this.api.services(id) })
-            .pipe(
-              map(({ businesses, services }) => ({ business: businesses.find(item => item.id === id), services })),
-              catchError((error: unknown) => of(error instanceof HttpErrorResponse && [400, 404].includes(error.status)
-                ? 'missing' as const : 'error' as const)),
-            );
+          return this.api.business(id).pipe(
+            switchMap(business => this.api.services(id).pipe(map(services => ({ business, services })))),
+            catchError((error: unknown) => of(error instanceof HttpErrorResponse && [400, 404].includes(error.status)
+              ? 'missing' as const : 'error' as const)),
+          );
         }),
       )),
       takeUntilDestroyed(),

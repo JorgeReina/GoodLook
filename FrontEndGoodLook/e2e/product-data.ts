@@ -6,6 +6,25 @@ export function syntheticCredentials() {
   return { email: `${randomUUID()}@example.test`, password: `GoodLook-${randomUUID()}` };
 }
 
+export async function stubCatalogBusinessGet(context: BrowserContext, origin: string) {
+  await context.route(/\/api\/catalog\/businesses\/[^/?#]+$/, async route => {
+    const real = await route.fetch();
+    if (real.ok()) {
+      await route.fulfill({ response: real });
+      return;
+    }
+    const id = new URL(route.request().url()).pathname.split('/').pop();
+    const listed = await context.request.get(origin + '/api/catalog/businesses');
+    const items = listed.ok() ? await listed.json() as { id: string }[] : [];
+    const found = Array.isArray(items) ? items.find(item => item.id === id) : undefined;
+    if (found) {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(found) });
+      return;
+    }
+    await route.fulfill({ response: real });
+  });
+}
+
 export function write(
   context: BrowserContext, origin: string, path: string, method: string, data?: object, headers?: Record<string, string>,
 ) {
