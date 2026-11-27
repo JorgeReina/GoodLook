@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAppointment, listProfessionalAgenda, type AppointmentPool, type SqlConnection } from '../src/appointments/service.js';
+import { AppointmentError, createAppointment, listProfessionalAgenda, type AppointmentPool, type SqlConnection } from '../src/appointments/service.js';
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 class Connection implements SqlConnection {
@@ -56,6 +56,24 @@ test('rejects invalid dates, past dates, and notes longer than 500 before databa
     await assert.rejects(createAppointment(pool(db), {...details, ...change}, {now:clock}));
     assert.equal(db.calls.length, 0);
   }
+});
+
+test('rejects booking starts that are not aligned to the 15-minute UTC grid before database access', async () => {
+  const invalid = (error: unknown) => error instanceof AppointmentError && error.code === 'invalid';
+  for (const startAt of ['2030-01-07T10:07:00.000Z', '2030-01-07T10:00:01.000Z', '2030-01-07T10:00:00.001Z']) {
+    const db = new Connection();
+    await assert.rejects(createAppointment(pool(db), {...details, startAt}, {now:clock}), invalid);
+    assert.equal(db.calls.length, 0);
+    assert.equal(db.calls.some(c => c.sql.includes('INSERT INTO appointments')), false);
+  }
+});
+
+test('accepts a booking start aligned to a 15-minute UTC boundary', async () => {
+  const db = new Connection();
+  const result = await createAppointment(pool(db), {...details, startAt:'2030-01-07T10:15:00.000Z'}, {now:clock, createId: () => id(5)});
+  assert.equal(result.startAt, '2030-01-07T10:15:00.000Z');
+  assert.equal(result.endAt, '2030-01-07T10:45:00.000Z');
+  assert.equal(db.committed, 1);
 });
 
 test('agenda permits owner, admin, or the assigned professional only within same business', async () => {
