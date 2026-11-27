@@ -1,0 +1,8 @@
+{
+  "host": "db81522.public.databaseasp.net",
+  "port": 3306,
+  "database": "db81522",
+  "user": "db81522",
+  "engine": "mariadb",
+  "version": "10.11"
+}

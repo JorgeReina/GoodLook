@@ -1,13 +1,23 @@
 import { createHash } from 'node:crypto';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import {
+  isLoopbackHost,
+  matchesDatabaseIdentity,
+  matchesProductionDatabase,
+  readPreviewDatabase,
+  readProductionDatabase,
+} from './production-identity.mjs';
 
 export const checksum = sql => createHash('sha256').update(sql, 'utf8').digest('hex');
 
 export function migrationDialect(env) {
-  const dialect = env.GOODLOOK_MIGRATION_DIALECT ?? 'mysql';
-  if (!['mysql', 'mariadb'].includes(dialect)) throw new Error('Invalid migration dialect');
-  return dialect;
+  if (env.GOODLOOK_MIGRATION_DIALECT !== undefined && env.GOODLOOK_MIGRATION_DIALECT !== '') {
+    if (!['mysql', 'mariadb'].includes(env.GOODLOOK_MIGRATION_DIALECT)) throw new Error('Invalid migration dialect');
+    return env.GOODLOOK_MIGRATION_DIALECT;
+  }
+  if (env.GOODLOOK_MIGRATION_TARGET === 'preview' && readPreviewDatabase()?.engine === 'mariadb') return 'mariadb';
+  return 'mysql';
 }
 
 export async function verifyServerDialect(connection, dialect) {
@@ -18,10 +28,35 @@ export async function verifyServerDialect(connection, dialect) {
   if ((dialect === 'mariadb') !== maria || (!maria && !/^8\./.test(version))) throw new Error('Server dialect does not match selected migration dialect');
 }
 
+const tlsFailureCodes = new Set([
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'CERT_UNTRUSTED',
+  'CERT_HAS_EXPIRED',
+  'CERT_NOT_YET_VALID',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'ERR_TLS_CERT_ALTNAME_INVALID',
+  'HANDSHAKE_SSL_ERROR',
+]);
+
+/** Fixed text for a failed certificate check. Never includes the URL or password. */
+export function tlsVerificationFailure(error) {
+  for (let current = error; current && typeof current === 'object'; current = current.cause) {
+    const code = typeof current.code === 'string' ? current.code : '';
+    const reason = typeof current.reason === 'string' ? current.reason : '';
+    if (tlsFailureCodes.has(code) || tlsFailureCodes.has(reason)) {
+      return 'TLS certificate could not be verified against the system CA; MYSQL_TLS stays required with rejectUnauthorized=true';
+    }
+  }
+  return null;
+}
+
 export function parseConfig(env) {
   if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
   const target = env.GOODLOOK_MIGRATION_TARGET;
-  if (!['test', 'development', 'production'].includes(target)) throw new Error('GOODLOOK_MIGRATION_TARGET must be test, development, or production');
+  if (!['test', 'development', 'preview', 'production'].includes(target)) throw new Error('GOODLOOK_MIGRATION_TARGET must be test, development, preview, or production');
   if ((target === 'production' || env.NODE_ENV === 'production') && env.GOODLOOK_ALLOW_PRODUCTION_MIGRATIONS !== 'YES') {
     throw new Error('Production migrations are disabled; explicit override is required');
   }
@@ -35,6 +70,21 @@ export function parseConfig(env) {
   let database, user, password;
   try { database = decodeURIComponent(url.pathname.slice(1)); user = decodeURIComponent(url.username); password = decodeURIComponent(url.password); } catch { throw new Error('Invalid DATABASE_URL encoding'); }
   if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
+  if (!isLoopbackHost(url.hostname)) {
+    const production = readProductionDatabase();
+    const preview = readPreviewDatabase();
+    const identity = { host: url.hostname, database, user };
+    if (target === 'preview') {
+      if (matchesProductionDatabase(identity, production)) throw new Error('Refusing to migrate the production database identity');
+      if (!preview) throw new Error('Preview database identity is not configured; refusing a non-loopback database');
+      if (!matchesDatabaseIdentity(identity, preview)) throw new Error('Preview can only migrate the preview database identity');
+    } else {
+      if (!production && target !== 'production') throw new Error('Production database identity is not configured; refusing a non-loopback database');
+      if (target !== 'production' && matchesProductionDatabase(identity, production)) {
+        throw new Error('Refusing to migrate the production database identity');
+      }
+    }
+  }
   return { host: url.hostname, port, user, password, database, timezone: 'Z', multipleStatements: true,
     ssl: tls ? { rejectUnauthorized: true } : undefined };
 }
