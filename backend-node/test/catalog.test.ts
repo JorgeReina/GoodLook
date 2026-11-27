@@ -5,8 +5,8 @@ import type { CatalogStore } from '../src/catalog/service.js';
 const actor='4c95e891-d8b5-40cb-93c9-b1429db9a71d', business='231c2e85-cba6-44e3-a803-fac58a3f7ff4', professional='b1ca7e0e-b0b4-49ac-a311-fe23403cfc43', service='d5502df6-1f29-47b8-8af4-d2101326580f';
 let calls: unknown[][] = [];
 const repo: CatalogStore = {
- async createBusiness(a,n,t){calls.push(['createBusiness',a,n,t]);return {id:business,name:n,timezone:t,isPublic:false}}, async listBusinesses(){return []}, async getHours(){return []},
- async list(b){calls.push(['list',b]);return []},
+ async createBusiness(a,n,t){calls.push(['createBusiness',a,n,t]);return {id:business,name:n,timezone:t,isPublic:false}}, async listBusinesses(page){calls.push(['listBusinesses',page]);return []}, async getHours(){return []},
+ async list(b,page){calls.push(['list',b,page]);return []},
  async create(a,b,v){calls.push(['create',a,b,v]);return {id:service,businessId:b,...v}},
  async assign(a,b,p,s){calls.push(['assign',a,b,p,s])},
  async setHours(a,b,p,h){calls.push(['hours',a,b,p,h])},
@@ -25,5 +25,12 @@ test('tenant and professional identifiers are validated',async()=>{
  await assert.rejects(()=>sut.assign(actor,'bad',professional,service),CatalogError);
  await assert.rejects(()=>sut.list('bad'),CatalogError);
  await sut.assign(actor,business,professional,service);assert.deepEqual(calls.at(-1),['assign',actor,business,professional,service]);
+});
+test('public lists apply default page bounds and reject invalid pagination',async()=>{
+ calls=[]; await sut.listBusinesses(); assert.deepEqual(calls[0],['listBusinesses',{limit:50,offset:0}]);
+ calls=[]; await sut.list(business,{page:'2',limit:'10'}); assert.deepEqual(calls[0],['list',business,{limit:10,offset:10}]);
+ for (const query of [{page:'0'},{limit:'0'},{limit:'101'},{page:'-1'},{limit:'1.5'},{page:'abc'}]) {
+  await assert.rejects(()=>sut.listBusinesses(query),CatalogError);
+ }
 });
 test('business creation validates name and IANA timezone before touching store',async()=>{calls=[];const result=await sut.createBusiness(actor,{name:' Salon ',timezone:'Europe/Madrid'});assert.equal(result.name,'Salon');assert.equal(result.isPublic,false);assert.deepEqual(calls[0],['createBusiness',actor,'Salon','Europe/Madrid']);for(const input of [{name:'',timezone:'UTC'},{name:'Test',timezone:'No/Such_Zone'},{name:'Test',timezone:'UTC '.repeat(40)},{name:'a'.repeat(161),timezone:'UTC'}])await assert.rejects(()=>sut.createBusiness(actor,input),CatalogError);});

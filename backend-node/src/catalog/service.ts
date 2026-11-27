@@ -1,25 +1,29 @@
+import { parsePageLimit } from '../http/pagination.js';
+
 export interface ServiceData { name:string; durationMinutes:number; priceCents:number; currency:string }
 export interface CatalogItem extends ServiceData { id:string; businessId:string }
 export interface WorkPeriod { weekday:number; startTime:string; endTime:string }
+export interface CatalogPage { limit:number; offset:number }
 export interface CatalogStore {
- list(businessId:string):Promise<CatalogItem[]>;
+ list(businessId:string,page:CatalogPage):Promise<CatalogItem[]>;
  create(actorId:string,businessId:string,data:ServiceData):Promise<CatalogItem>;
  assign(actorId:string,businessId:string,professionalId:string,serviceId:string):Promise<void>;
  setHours(actorId:string,businessId:string,professionalId:string,hours:WorkPeriod[]):Promise<void>;
- listBusinesses():Promise<{id:string;name:string;timezone:string}[]>;
+ listBusinesses(page:CatalogPage):Promise<{id:string;name:string;timezone:string}[]>;
  createBusiness(actorId:string,name:string,timezone:string):Promise<{id:string;name:string;timezone:string;isPublic:false}>;
  setVisibility(actorId:string,businessId:string,published:boolean):Promise<void>;
  getHours(actorId:string,businessId:string,professionalId:string):Promise<WorkPeriod[]>;
 }
 export class CatalogError extends Error { constructor(public readonly code:'invalid'|'forbidden'|'not_found') { super(code); } }
+function page(query:unknown):CatalogPage { const parsed=parsePageLimit(query); if(!parsed) throw new CatalogError('invalid'); return {limit:parsed.limit,offset:parsed.offset}; }
 function id(value:unknown):string { if(typeof value!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) throw new CatalogError('invalid'); return value.toLowerCase(); }
 function minutes(v:unknown, end=false):number { if(typeof v!=='string'||!/^\d\d:\d\d$/.test(v)) throw new CatalogError('invalid'); const [h,m]=v.split(':').map(Number); if(m>59||h>24||(h===24&&(!end||m!==0))) throw new CatalogError('invalid'); return h*60+m; }
 export class CatalogService {
  constructor(private readonly store:CatalogStore) {}
- async listBusinesses(){return this.store.listBusinesses();}
+ async listBusinesses(query?:unknown){return this.store.listBusinesses(page(query));}
  async createBusiness(actor:unknown,input:unknown){const a=id(actor);if(typeof input!=='object'||input===null)throw new CatalogError('invalid');const {name,timezone}=input as Record<string,unknown>;if(typeof name!=='string'||!name.trim()||Array.from(name.trim()).length>160||typeof timezone!=='string'||timezone.length>64||!(/^[A-Za-z0-9_+\/-]+$/.test(timezone)))throw new CatalogError('invalid');try{new Intl.DateTimeFormat('en',{timeZone:timezone})}catch{throw new CatalogError('invalid')}return this.store.createBusiness(a,name.trim(),timezone);}
  async setVisibility(actor:unknown,business:unknown,published:unknown){const a=id(actor),b=id(business);if(typeof published!=='boolean')throw new CatalogError('invalid');return this.store.setVisibility(a,b,published);}
- async list(business:unknown) { return this.store.list(id(business)); }
+ async list(business:unknown,query?:unknown) { return this.store.list(id(business),page(query)); }
  async getHours(actor:unknown,business:unknown,professional:unknown){return this.store.getHours(id(actor),id(business),id(professional));}
  async create(actor:unknown,business:unknown,input:unknown) {
   const a=id(actor),b=id(business); if(typeof input!=='object'||input===null) throw new CatalogError('invalid');

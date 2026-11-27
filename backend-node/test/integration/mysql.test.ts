@@ -114,6 +114,9 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
 
     await t.test('public catalog and authenticated booking HTTP contracts',async()=>{
       const listed = await fetch(base+'/api/catalog/businesses');
+      assert.match(listed.headers.get('cache-control')??'',/s-maxage/);
+      assert.match(listed.headers.get('cache-control')??'',/stale-while-revalidate/);
+      assert.doesNotMatch(listed.headers.get('cache-control')??'',/no-store/);
       const publicBusinesses = await listed.json() as {id:string;name:string}[];
       assert.deepEqual(publicBusinesses.find(item=>item.id===business),{id:business,name:'One',sector:null,address:null,timezone:'UTC'});
       assert.ok(publicBusinesses.some(item=>item.name==='Existing public business'));
@@ -121,9 +124,14 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
       const hidden = await fetch(base+`/api/catalog/businesses/${otherBusiness}/services`);
       assert.equal(hidden.status,404);
       assert.deepEqual(await hidden.json(),{code:'not_found'});
+      const invalidPage = await fetch(base+'/api/catalog/businesses?limit=0');
+      assert.equal(invalidPage.status,400);
+      assert.deepEqual(await invalidPage.json(),{code:'invalid_input'});
       const services = await fetch(base+`/api/catalog/businesses/${business}/services`);
+      assert.match(services.headers.get('cache-control')??'',/s-maxage/);
       assert.deepEqual(await services.json(),[{id:service,businessId:business,name:'Cut',description:null,durationMinutes:30,priceCents:1500,currency:'EUR',active:true}]);
       const staff = await fetch(base+`/api/catalog/businesses/${business}/professionals?serviceId=${service}`);
+      assert.match(staff.headers.get('cache-control')??'',/s-maxage/);
       assert.deepEqual(await staff.json(),[{id:professional,displayName:'Pro',active:true,linked:true,serviceIds:[service]}]);
       const upperCaseServices = await fetch(base+`/api/catalog/businesses/${business.toUpperCase()}/services`);
       assert.equal(upperCaseServices.status,200);
