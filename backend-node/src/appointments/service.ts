@@ -103,6 +103,7 @@ export async function createBooking(pool:AppointmentPool,input:BookingInput,deps
 async function reserve(pool:AppointmentPool,input:CreateInput,deps:Dependencies,request?:{key:string;hash:string;quote:Quote}) {
   for (const id of [input.actorId,input.businessId,input.professionalId,input.serviceId]) requireId(id);
   const start = parseUtc(input.startAt);
+  if (start % 900_000 !== 0) throw new AppointmentError('invalid', 'Start must align to a 15-minute slot');
   const now = (deps.now ?? Date.now)();
   if (!Number.isFinite(now) || (!request && start <= now)) throw new AppointmentError('invalid', 'Appointment must be in the future');
   if (input.notes != null && (typeof input.notes !== 'string' || Array.from(input.notes).length > 500)) throw new AppointmentError('invalid', 'Invalid notes');
