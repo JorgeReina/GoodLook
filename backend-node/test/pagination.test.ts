@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parsePageLimit } from '../src/http/pagination.js';
+import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, parsePageLimit, probeLimit, takePage } from '../src/http/pagination.js';
 
 test('pagination defaults to the first page with a bounded page size', () => {
   assert.deepEqual(parsePageLimit(undefined), { page: 1, limit: DEFAULT_PAGE_SIZE, offset: 0 });
@@ -22,4 +22,12 @@ test('pagination rejects unsafe or out-of-range values', () => {
   ]) {
     assert.equal(parsePageLimit(query), null);
   }
+});
+
+test('takePage uses the extra probe row and never returns more than limit items', () => {
+  const page = { page: 1, limit: 2, offset: 0 };
+  assert.equal(probeLimit(page), 3);
+  assert.deepEqual(takePage(['a', 'b'], page), { items: ['a', 'b'], hasMore: false });
+  assert.deepEqual(takePage(['a', 'b', 'c'], page), { items: ['a', 'b'], hasMore: true });
+  assert.deepEqual(takePage(['z'], { page: 3, limit: 2, offset: 4 }), { items: ['z'], hasMore: false });
 });

@@ -32,3 +32,12 @@ export function parsePageLimit(query: unknown): PageLimit | null {
   if (!Number.isSafeInteger(offset) || offset < 0) return null;
   return { page, limit, offset };
 }
+
+export function probeLimit(page: PageLimit): number {
+  return page.limit + 1;
+}
+
+export function takePage<T>(rows: readonly T[], page: PageLimit): { items: T[]; hasMore: boolean } {
+  const hasMore = rows.length > page.limit;
+  return { items: hasMore ? rows.slice(0, page.limit) : [...rows], hasMore };
+}

@@ -117,6 +117,8 @@ test('isolated database: migrations, identity, tenant checks and racing bookings
       assert.match(listed.headers.get('cache-control')??'',/s-maxage/);
       assert.match(listed.headers.get('cache-control')??'',/stale-while-revalidate/);
       assert.doesNotMatch(listed.headers.get('cache-control')??'',/no-store/);
+      assert.equal(listed.headers.get('x-has-more'),'false');
+      assert.equal(listed.headers.get('link'),null);
       const publicBusinesses = await listed.json() as {id:string;name:string}[];
       assert.deepEqual(publicBusinesses.find(item=>item.id===business),{id:business,name:'One',sector:null,address:null,timezone:'UTC'});
       assert.ok(publicBusinesses.some(item=>item.name==='Existing public business'));

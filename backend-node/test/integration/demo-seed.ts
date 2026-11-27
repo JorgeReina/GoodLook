@@ -28,12 +28,12 @@ export async function verifyDemoSeed(capability: object) {
     // The public catalog reads use only execute, which both types provide.
     const catalog = new MysqlCatalogStore(connection as unknown as Pool);
     const roster = new MysqlProfessionalsStore(connection as unknown as Pool);
-    const businesses = await catalog.listBusinesses();
+    const businesses = await catalog.listBusinesses({limit:50,offset:0});
     assert.equal(businesses.length, 1);
     const [business] = businesses;
     assert.equal(business.name, 'DEMO LOCAL');
     assert.equal(business.timezone, 'Europe/Madrid');
-    const services = await catalog.list(business.id);
+    const services = await catalog.list(business.id,{limit:50,offset:0});
     const professionals = await roster.listActive(business.id);
     assert.equal(services.length, 2);
     assert.equal(professionals.length, 2);
@@ -78,8 +78,8 @@ export async function verifyDemoSeed(capability: object) {
     assert.deepEqual(await readProfessionalAccounts(), accounts);
     const [[usersAfterReseed]] = await connection.query<RowDataPacket[]>('SELECT COUNT(*) AS count FROM users');
     assert.equal(Number(usersAfterReseed.count), 3);
-    assert.deepEqual(await catalog.listBusinesses(), businesses);
-    assert.deepEqual(await catalog.list(business.id), services);
+    assert.deepEqual(await catalog.listBusinesses({limit:50,offset:0}), businesses);
+    assert.deepEqual(await catalog.list(business.id,{limit:50,offset:0}), services);
     assert.deepEqual(await roster.listActive(business.id), professionals);
     for (const [table, expectedCount] of [['professionals', 2], ['services', 2], ['professional_services', 4], ['working_hours', 14]] as const) {
       const [[row]] = await connection.execute<RowDataPacket[]>('SELECT COUNT(*) AS count FROM ' + table + ' WHERE business_id=?', [business.id]);
@@ -95,7 +95,7 @@ export async function verifyDemoSeed(capability: object) {
     // Simulate a changed row with a reserved identifier, even under an equivalent collation.
     await connection.execute('UPDATE businesses SET name=? WHERE id=?', ['demo local', business.id]);
     await assert.rejects(seedDemo(connection, capability), /reserved fixture conflict/);
-    assert.equal((await catalog.listBusinesses())[0].name, 'demo local');
+    assert.equal((await catalog.listBusinesses({limit:50,offset:0}))[0].name, 'demo local');
     await connection.execute('UPDATE businesses SET name=? WHERE id=?', [business.name, business.id]);
 
     await connection.execute(

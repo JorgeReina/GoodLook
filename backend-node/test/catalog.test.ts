@@ -27,10 +27,20 @@ test('tenant and professional identifiers are validated',async()=>{
  await sut.assign(actor,business,professional,service);assert.deepEqual(calls.at(-1),['assign',actor,business,professional,service]);
 });
 test('public lists apply default page bounds and reject invalid pagination',async()=>{
- calls=[]; await sut.listBusinesses(); assert.deepEqual(calls[0],['listBusinesses',{limit:50,offset:0}]);
- calls=[]; await sut.list(business,{page:'2',limit:'10'}); assert.deepEqual(calls[0],['list',business,{limit:10,offset:10}]);
+ calls=[]; const empty=await sut.listBusinesses(); assert.deepEqual(calls[0],['listBusinesses',{limit:51,offset:0}]);
+ assert.deepEqual(empty,{items:[],hasMore:false,page:{page:1,limit:50,offset:0}});
+ calls=[]; const listed=await sut.list(business,{page:'2',limit:'10'}); assert.deepEqual(calls[0],['list',business,{limit:11,offset:10}]);
+ assert.equal(listed.hasMore,false);
  for (const query of [{page:'0'},{limit:'0'},{limit:'101'},{page:'-1'},{limit:'1.5'},{page:'abc'}]) {
   await assert.rejects(()=>sut.listBusinesses(query),CatalogError);
  }
+});
+test('public list keeps at most limit items and reports a following page from the probe row',async()=>{
+ const pageItems=Array.from({length:11},(_,i)=>({id:`${i}`,name:`n${i}`,timezone:'UTC'}));
+ const paged=new CatalogService({...repo,async listBusinesses(){return pageItems}});
+ const result=await paged.listBusinesses({page:'2',limit:'10'});
+ assert.equal(result.items.length,10);
+ assert.equal(result.hasMore,true);
+ assert.deepEqual(result.page,{page:2,limit:10,offset:10});
 });
 test('business creation validates name and IANA timezone before touching store',async()=>{calls=[];const result=await sut.createBusiness(actor,{name:' Salon ',timezone:'Europe/Madrid'});assert.equal(result.name,'Salon');assert.equal(result.isPublic,false);assert.deepEqual(calls[0],['createBusiness',actor,'Salon','Europe/Madrid']);for(const input of [{name:'',timezone:'UTC'},{name:'Test',timezone:'No/Such_Zone'},{name:'Test',timezone:'UTC '.repeat(40)},{name:'a'.repeat(161),timezone:'UTC'}])await assert.rejects(()=>sut.createBusiness(actor,input),CatalogError);});

@@ -6,7 +6,7 @@ Los listados públicos de fichas y oferta viven en `/api/catalog`. El piloto con
 
 El cuerpo de un listado correcto sigue siendo un **array JSON**. No se envuelve en `{items,total}`. El frontend de producto (`GET /api/catalog/businesses`, `/services`, `/professionals`) y el piloto (`GET /api/businesses`, `GET /api/services`) no cambian de tipo.
 
-Si hay más filas que el tamaño de página, la respuesta se corta. Quien necesite el resto debe pedir la página siguiente.
+Si hay más filas que el tamaño de página, la respuesta se corta. El cuerpo no indica si hay continuación: eso va en cabeceras.
 
 ## Paginación
 
@@ -17,7 +17,19 @@ Query opcional:
 | `page` | `1` | entero positivo cuyo offset quepa en un entero seguro | Base 1 |
 | `limit` | `50` | `100` | Entero ≥ 1 |
 
-La consulta SQL lleva siempre `LIMIT ? OFFSET ?` con esos valores. `page` y `limit` deben ser enteros en decimal sin ceros a la izquierda (no `01`, no `1.5`, no arrays).
+La consulta SQL pide **`limit + 1`** filas (`LIMIT ? OFFSET ?`) y no usa `COUNT(*)`. Si llega la fila extra, el cuerpo se recorta a `limit` y hay página siguiente.
+
+`page` y `limit` deben ser enteros en decimal sin ceros a la izquierda (no `01`, no `1.5`, no arrays).
+
+Cabeceras de un 200:
+
+| Cabecera | Valor |
+| --- | --- |
+| `X-Has-More` | `true` o `false` |
+| `Link` | solo si hay más: `</api/catalog/businesses?page=3&limit=2>; rel="next"` (ruta actual, `page` siguiente y el mismo `limit`; se conservan otros query como `serviceId`) |
+| `Access-Control-Expose-Headers` | `X-Has-More, Link` |
+
+La API es de mismo origen y **no hay middleware CORS**. Se envía `Access-Control-Expose-Headers` para que esas dos cabeceras sigan visibles si más adelante se habilita CORS.
 
 Valores inválidos responden **400**. En `/api/catalog` el cuerpo es `{ "code": "invalid_input" }`, el mismo formato que el resto de errores de entrada de ese router. En `GET /api/businesses` y `GET /api/services` el cuerpo es `{ "error": "invalid" }`, el formato ya usado por el catálogo del piloto.
 

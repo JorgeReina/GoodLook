@@ -1,7 +1,8 @@
 import { Router, type Request, type Response } from 'express';
 import type { Pool, RowDataPacket } from 'mysql2/promise';
 import { PUBLIC_CATALOG_CACHE } from '../http/cache-control.js';
-import { parsePageLimit } from '../http/pagination.js';
+import { applyCatalogPageHeaders } from '../http/page-headers.js';
+import { parsePageLimit, probeLimit, takePage } from '../http/pagination.js';
 
 interface Staff {
   id: string;
@@ -18,9 +19,11 @@ const offers = `FROM businesses b JOIN services s ON s.business_id=b.id AND s.ac
   JOIN memberships m ON m.business_id=p.business_id AND m.user_id=p.user_id AND m.status='active'
   WHERE b.is_public=TRUE AND EXISTS (SELECT 1 FROM working_hours h WHERE h.business_id=p.business_id AND h.professional_id=p.id)`;
 
-function sendPublic(res: Response, body: unknown) {
+function sendPublic(req: Request, res: Response, page: NonNullable<ReturnType<typeof parsePageLimit>>, rows: unknown[]) {
+  const { items, hasMore } = takePage(rows, page);
+  applyCatalogPageHeaders(req, res, page, hasMore);
   res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
-  res.json(body);
+  res.json(items);
 }
 
 function sendCatalogError(res: Response, status: number, code: 'invalid_input' | 'not_found') {
@@ -39,9 +42,9 @@ export function publicCatalogRoutes(pool: Pool) {
     if (!page) { sendCatalogError(res, 400, 'invalid_input'); return; }
     const [rows] = await pool.execute<RowDataPacket[]>(
       'SELECT id,name,sector,address,timezone FROM businesses WHERE is_public=TRUE ORDER BY name,id LIMIT ? OFFSET ?',
-      [page.limit, page.offset],
+      [probeLimit(page), page.offset],
     );
-    sendPublic(res, rows);
+    sendPublic(req, res, page, rows);
   });
   router.get('/businesses/:id/services', async (req, res) => {
     const businessId = req.params.id.toLowerCase();
@@ -50,8 +53,8 @@ export function publicCatalogRoutes(pool: Pool) {
     if (!await isPublished(pool, businessId)) { sendCatalogError(res, 404, 'not_found'); return; }
     const [rows] = await pool.execute<RowDataPacket[]>(`SELECT DISTINCT s.id,s.business_id AS businessId,s.name,s.description,
       s.duration_minutes AS durationMinutes,s.price_cents AS priceCents,s.currency ${offers} AND b.id=? ORDER BY s.name,s.id LIMIT ? OFFSET ?`,
-    [businessId, page.limit, page.offset]);
-    sendPublic(res, rows.map(row => ({ ...row, active: true })));
+    [businessId, probeLimit(page), page.offset]);
+    sendPublic(req, res, page, rows.map(row => ({ ...row, active: true })));
   });
   router.get('/businesses/:id/professionals', async (req, res) => {
     const businessId = req.params.id.toLowerCase();
@@ -76,7 +79,7 @@ export function publicCatalogRoutes(pool: Pool) {
       JOIN professional_services ps ON ps.business_id=? AND ps.professional_id=p.id AND ps.active=TRUE
       JOIN services s ON s.business_id=ps.business_id AND s.id=ps.service_id AND s.active=TRUE
       ORDER BY p.display_name,p.id,s.id`,
-      [businessId, serviceId, page.limit, page.offset, businessId],
+      [businessId, serviceId, probeLimit(page), page.offset, businessId],
     );
     const staff = new Map<string, Staff>();
     for (const row of rows) {
@@ -84,7 +87,7 @@ export function publicCatalogRoutes(pool: Pool) {
       professional.serviceIds.push(row.serviceId);
       staff.set(row.id, professional);
     }
-    sendPublic(res, [...staff.values()]);
+    sendPublic(req, res, page, [...staff.values()]);
   });
   return router;
 }

@@ -55,6 +55,16 @@ test('merged unordered busy intervals give same result as a naive overlap oracle
  assert.deepEqual(actual.slots.map(s=>s.startAt),expected);
 });
 
+test('availability slots start on the UTC 15-minute grid even when the window does not',async()=>{
+ const c=new Connection();
+ const r=await publicAvailability(pool(c),{...req,from:'2030-01-07T09:07:03.123Z',to:'2030-01-07T11:00:00.000Z'},clock);
+ assert.ok(r.slots.length>0);
+ for(const slot of r.slots){
+  assert.equal(Date.parse(slot.startAt)%900_000,0,slot.startAt);
+  assert.match(slot.startAt,/T\d\d:(00|15|30|45):00\.000Z$/);
+ }
+});
+
 test('availability fails closed when too many weekly hours exist',async()=>{
  const c=new Connection();const original=c.query.bind(c);
  c.query=async(sql,params)=>sql.includes('FROM working_hours')?[Array.from({length:101},()=>({weekday:1,start_seconds:0,end_seconds:86400})),[]]:original(sql,params);
