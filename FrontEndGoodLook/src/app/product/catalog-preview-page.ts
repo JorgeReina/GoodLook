@@ -7,6 +7,17 @@ import type { PublicBusiness } from './api/contracts';
 import { CustomerApi } from './customer/customer-api';
 import { StatusMessage } from './shared/status-message';
 
+export function appendUniqueById<T extends { id: string }>(previous: T[], incoming: T[]) {
+  const seen = new Set(previous.map(item => item.id));
+  const added: T[] = [];
+  for (const item of incoming) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    added.push(item);
+  }
+  return { items: previous.concat(added), added };
+}
+
 type CatalogState =
   | { kind: 'loading' | 'error' }
   | {
@@ -118,7 +129,7 @@ export class CatalogPreviewPage {
 
   protected load() {
     this.nextPage = 1;
-    this.announcement.set('Cargando negocios…');
+    this.announcement.set('');
     this.state.set({ kind: 'loading' });
     this.fetchPage(false);
   }
@@ -126,7 +137,6 @@ export class CatalogPreviewPage {
   protected loadMore() {
     const catalog = this.state();
     if (catalog.kind !== 'ready' || catalog.loadingMore || !catalog.hasMore) return;
-    this.announcement.set('Cargando más negocios…');
     this.state.set({ ...catalog, loadingMore: true, moreError: false });
     this.fetchPage(true);
   }
@@ -138,7 +148,7 @@ export class CatalogPreviewPage {
       next: result => {
         const current = this.state();
         const previous = append && current.kind === 'ready' ? current.businesses : [];
-        const businesses = [...previous, ...result.items];
+        const { items: businesses, added } = appendUniqueById(previous, result.items);
         this.nextPage = page + 1;
         this.state.set({
           kind: 'ready',
@@ -147,28 +157,23 @@ export class CatalogPreviewPage {
           loadingMore: false,
           moreError: false,
         });
-        this.announceReady(append, result.items.length, businesses.length);
-        if (append && result.items.length) this.focusBusiness(previous.length);
+        if (append) this.announceAdded(added.length, businesses.length);
+        else this.announcement.set('');
+        if (append && added.length) this.focusBusiness(previous.length);
       },
       error: () => {
         if (append && this.state().kind === 'ready') {
           this.state.update(current => current.kind === 'ready'
             ? { ...current, loadingMore: false, moreError: true }
             : current);
-          this.announcement.set('No pudimos cargar más negocios.');
         } else {
           this.state.set({ kind: 'error' });
-          this.announcement.set('No pudimos cargar los negocios.');
         }
       },
     });
   }
 
-  private announceReady(append: boolean, added: number, total: number) {
-    if (!append) {
-      this.announcement.set(total ? `Hay ${total} negocios en el catálogo.` : 'Todavía no hay negocios publicados.');
-      return;
-    }
+  private announceAdded(added: number, total: number) {
     const addedLabel = added === 1 ? 'Se ha añadido 1 negocio' : `Se han añadido ${added} negocios`;
     this.announcement.set(`${addedLabel}. Hay ${total} en total.`);
   }
