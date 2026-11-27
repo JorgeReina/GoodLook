@@ -47,9 +47,15 @@ export AUTH_LIMIT_SECRET="$(openssl rand -hex 32)"
 npm start
 ```
 
+`PORT` es opcional; el valor por defecto es 3000. No configurar credenciales en este repositorio. El ejemplo local está en `.env.example`. La separación de preview y producción, y la regla de no exportar `VERCEL`, están en [docs/migracion/ENTORNOS.md](../docs/migracion/ENTORNOS.md).
+
 `APP_ORIGIN=http://localhost:4200` vale para el piloto y para el producto cuando Angular se sirve en ese origen y el proxy reenvía `/api` a `127.0.0.1:3000`. El detalle del proxy, de la demo Docker y del paquete que publica `/piloto` y `/producto/` está en [`FrontEndGoodLook/PILOTO.md`](../FrontEndGoodLook/PILOTO.md). La demo aislada usa el puerto de base `33317` y credenciales solo de esa base desechable.
 
 En el despliegue del paquete, `api/index.ts` exporta la misma aplicación y no ejecuta `npm start`. `APP_ORIGIN` es el origen HTTPS del sitio, `MYSQL_TLS=true` y el secreto viven en el entorno de la plataforma. No subas un archivo `.env`.
+
+Sin `GOODLOOK_DATA_ENV` ni `VERCEL_ENV` el papel queda sin declarar y una base que no sea loopback impide el arranque. Las identidades se leen de `config/production-database.json` y `config/preview-database.json`. Solo el papel `production` puede abrir `db80496`. El papel `preview` solo abre `db81522`. `VERCEL=1` sin `VERCEL_ENV=production` tampoco puede abrir producción. No definas `VERCEL` ni `VERCEL_ENV` en local, Docker ni CI: las inyecta Vercel.
+
+El runtime abre un pool `mysql2` con `connectionLimit: 3`, `maxIdle: 2` e `idleTimeout: 5000` (ms). Ese tope es por isolate, no global: varios isolates concurrentes pueden acercarse al cupo de la base. `maxIdle` va por debajo de `connectionLimit` porque, si no, mysql2 no aplica el `idleTimeout`.
 
 Comprobación mínima con el proceso en marcha:
 
@@ -133,7 +139,7 @@ La limpieza no es un cron del proceso. Tras `npm run build`:
 GOODLOOK_RATE_CLEANUP=YES node dist/cleanup-rate-limits.js
 ```
 
-Usa la misma `DATABASE_URL`, `APP_ORIGIN` y TLS que el servicio. Cada ejecución borra como máximo 500 filas cuya ventana empezó hace más de 24 horas, según el reloj UTC de MySQL. Hay que repetirla con un planificador externo. No hay límite duro de tamaño: una distribución de IPs, cuentas diferentes o ejecución insuficiente de la limpieza puede seguir generando muchos registros. No se leen ni registran correos o direcciones IP en claro.
+Usa la misma `DATABASE_URL`, `APP_ORIGIN` y TLS que el servicio. Cada ejecución borra como máximo 500 filas cuya ventana empezó hace más de 24 horas, según el reloj UTC de MySQL. Hay que repetirla con un planificador externo. No hay límite duro de tamaño: una distribución de IPs, cuentas diferentes o ejecución insuficiente de la limpieza puede seguir generando muchos registros. No se leen ni registran correos o direcciones IP en claro. Estas operaciones aún requieren validación de concurrencia en MySQL real.
 
 ## Recursos y rutas
 
