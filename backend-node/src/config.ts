@@ -1,3 +1,5 @@
+import { assertDatabaseIsolation, readPreviewDatabase, readProductionDatabase } from './data-guard.js';
+
 export function loadConfig(env: NodeJS.ProcessEnv) {
   const rawPort = env.PORT ?? '3000';
   const port = Number(rawPort);
@@ -11,5 +13,10 @@ export function loadConfig(env: NodeJS.ProcessEnv) {
   if (db.protocol !== 'mysql:' || !db.hostname || !db.username || !db.pathname.slice(1) || db.search || db.hash) throw new Error('Invalid DATABASE_URL');
   const tls = env.MYSQL_TLS === 'true';
   if (!tls && !(env.MYSQL_ALLOW_INSECURE_LOCAL === 'true' && ['localhost', '127.0.0.1', '[::1]'].includes(db.hostname))) throw new Error('MySQL TLS is required unless local plaintext is explicitly permitted');
-  return { port, origin: rawOrigin, db, tls };
+  let database: string;
+  let user: string;
+  try { database = decodeURIComponent(db.pathname.slice(1)); user = decodeURIComponent(db.username); } catch { throw new Error('Invalid DATABASE_URL encoding'); }
+  if (!database || database.includes('/') || database.includes('\0')) throw new Error('Invalid database name');
+  const dataRole = assertDatabaseIsolation(env, { host: db.hostname, database, user }, readProductionDatabase(), readPreviewDatabase());
+  return { port, origin: rawOrigin, db, tls, dataRole };
 }

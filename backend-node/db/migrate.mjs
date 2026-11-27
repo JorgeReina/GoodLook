@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseConfig, loadMigrations, applyMigrations, migrationDialect, verifyServerDialect } from './migrate-lib.mjs';
+import { parseConfig, loadMigrations, applyMigrations, migrationDialect, verifyServerDialect, tlsVerificationFailure } from './migrate-lib.mjs';
 
 let conn;
 try {
@@ -16,7 +16,9 @@ try {
   console.log('Migrations completed.');
 } catch (error) {
   // Avoid printing database URLs or raw driver errors, which can contain secrets.
-  console.error(`Migration failed (${typeof error?.code === 'string' ? error.code : 'check configuration or migration state'}).`);
+  const tls = tlsVerificationFailure(error);
+  const code = typeof error?.code === 'string' ? error.code : 'check configuration or migration state';
+  console.error(`Migration failed (${tls ?? code}).`);
   process.exitCode = 1;
 } finally {
   if (conn) await conn.end();
