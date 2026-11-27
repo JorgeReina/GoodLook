@@ -56,17 +56,6 @@ export function publicCatalogRoutes(pool: Pool) {
     );
     sendPublic(req, res, page, rows.map(toPublicBusiness));
   });
-  router.get('/businesses/:id', async (req, res) => {
-    const businessId = req.params.id.toLowerCase();
-    if (!uuid.test(businessId)) { sendCatalogError(res, 400, 'invalid_input'); return; }
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT id,name,sector,address,timezone FROM businesses WHERE id=? AND is_public=TRUE',
-      [businessId],
-    );
-    if (!rows[0]) { sendCatalogError(res, 404, 'not_found'); return; }
-    res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
-    res.json(toPublicBusiness(rows[0]));
-  });
   router.get('/businesses/:id/services', async (req, res) => {
     const businessId = req.params.id.toLowerCase();
     const page = pageFrom(req);
@@ -109,6 +98,17 @@ export function publicCatalogRoutes(pool: Pool) {
       staff.set(row.id, professional);
     }
     sendPublic(req, res, page, [...staff.values()]);
+  });
+  router.get('/businesses/:id', async (req, res) => {
+    const businessId = req.params.id.toLowerCase();
+    if (!uuid.test(businessId)) { sendCatalogError(res, 400, 'invalid_input'); return; }
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT id,name,sector,address,timezone FROM businesses WHERE id=? AND is_public=TRUE',
+      [businessId],
+    );
+    if (!rows[0]) { sendCatalogError(res, 404, 'not_found'); return; }
+    res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
+    res.json(toPublicBusiness(rows[0]));
   });
   return router;
 }

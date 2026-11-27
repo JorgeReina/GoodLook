@@ -47,7 +47,7 @@ const pool = {
           return [publishedOnly ? [] : [{ id: unpublished, name: 'Hidden', sector: null, address: null, timezone: 'UTC' }], []];
         }
         const found = businesses.find(item => item.id === id);
-        return [found ? [found] : [], []];
+        return [found ? [{ ...found, is_public: 1, ownerEmail: 'secret@example.test', passwordHash: 'x' }] : [], []];
       }
       const [limit, offset] = params as [number, number];
       return [businesses.slice(offset, offset + limit), []];
@@ -176,7 +176,10 @@ test('GET /api/catalog/businesses/:id returns a published PublicBusiness and cac
   const response = await fetch(`${base}/api/catalog/businesses/${business.toUpperCase()}`);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), PUBLIC_CATALOG_CACHE);
-  assert.deepEqual(await response.json(), businesses.find(item => item.id === business));
+  const body = await response.json() as Record<string, unknown>;
+  assert.deepEqual(body, businesses.find(item => item.id === business));
+  assert.deepEqual(Object.keys(body).sort(), ['address', 'id', 'name', 'sector', 'timezone']);
+  assert.equal('ownerEmail' in body || 'passwordHash' in body || 'is_public' in body, false);
   assert.equal(queries.length, 1);
   assert.match(queries[0].sql, /is_public\s*=\s*(?:TRUE|1)/i);
   assert.match(queries[0].sql, /WHERE\s+id\s*=\s*\?/i);
@@ -199,11 +202,30 @@ test('GET /api/catalog/businesses/:id is 404 for unpublished or missing and 400 
   assert.equal(absent.headers.get('cache-control'), 'no-store');
 
   queries.length = 0;
-  const invalid = await fetch(`${base}/api/catalog/businesses/not-a-uuid`);
-  assert.equal(invalid.status, 400);
-  assert.deepEqual(await invalid.json(), { code: 'invalid_input' });
-  assert.equal(invalid.headers.get('cache-control'), 'no-store');
+  for (const id of ['0', '-1', '1.5', 'not-a-uuid', '999999999999999999999999', '1e3']) {
+    const invalid = await fetch(`${base}/api/catalog/businesses/${id}`);
+    assert.equal(invalid.status, 400, id);
+    assert.deepEqual(await invalid.json(), { code: 'invalid_input' });
+    assert.equal(invalid.headers.get('cache-control'), 'no-store');
+  }
   assert.equal(queries.length, 0);
+});
+
+test('GET /api/catalog/businesses/:id/services is unchanged after the by-id route', async () => {
+  queries.length = 0;
+  const services = await fetch(`${base}/api/catalog/businesses/${business}/services?limit=5`);
+  assert.equal(services.status, 200);
+  assert.equal(services.headers.get('cache-control'), PUBLIC_CATALOG_CACHE);
+  assert.deepEqual(await services.json(), [{
+    id: service, businessId: business, name: 'Cut', description: null,
+    durationMinutes: 30, priceCents: 1500, currency: 'EUR', active: true,
+  }]);
+  assert.match(queries.at(-1)!.sql, /duration_minutes/i);
+  assert.match(queries.at(-1)!.sql, /LIMIT\s+\?\s+OFFSET\s+\?/i);
+
+  const staff = await fetch(`${base}/api/catalog/businesses/${business}/professionals?serviceId=${service}&page=1&limit=2`);
+  assert.equal(staff.status, 200);
+  assert.equal((await staff.json() as unknown[]).length, 2);
 });
 
 test('public catalog rejects invalid pagination with the centralized error body', async () => {

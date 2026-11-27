@@ -486,8 +486,11 @@ paths:
       security: []
       summary: Ficha publicada por id
       description: |
-        El mismo objeto `PublicBusiness` que un elemento de `GET /api/catalog/businesses`.
-        La consulta exige `is_public=TRUE`. Un negocio inexistente o privado responde el mismo 404.
+        El mismo objeto `PublicBusiness` que un elemento de `GET /api/catalog/businesses`
+        (`id`, `name`, `sector`, `address`, `timezone`). El `id` es UUID, como en el resto
+        de `/api/catalog`. `0`, negativos, decimales, texto o enteros que no son UUID
+        responden 400. La consulta exige `is_public=TRUE`. Un negocio inexistente o
+        privado responde el mismo 404. No coincide con `/services` ni `/professionals`.
       parameters: [{ $ref: '#/components/parameters/BusinessId' }]
       responses:
         '413': { $ref: '#/components/responses/RequestTooLarge' }
@@ -498,8 +501,28 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PublicBusiness' }
-        '400': { $ref: '#/components/responses/CodeInvalid' }
-        '404': { $ref: '#/components/responses/CodeNotFound' }
+        '400':
+          description: El id no es un UUID.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CatalogNoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [invalid_input] }
+        '404':
+          description: No existe o no está publicado.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CatalogNoStore' }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [code]
+                properties:
+                  code: { type: string, enum: [not_found] }
   /api/catalog/businesses/{id}/services:
     get:
       tags: [catalogo-publico]
@@ -1324,6 +1347,9 @@ components:
     CatalogExposeHeaders:
       description: Para que el navegador lea las cabeceras si hay CORS.
       schema: { type: string, enum: ['X-Has-More, Link'] }
+    CatalogNoStore:
+      description: Errores de catálogo público. No cachear.
+      schema: { type: string, enum: [no-store] }
   responses:
     ErrorInvalid:
       description: Entrada no válida.
