@@ -18,7 +18,9 @@ import { MysqlCatalogStore } from './catalog/mysql-store.js';
 import { publicAvailability } from './appointments/public-availability.js';
 import { AvailabilityRateLimiter, MysqlAvailabilityRateStore } from './appointments/rate-limit.js';
 
-// Cap below mysql2's default of 10 so Vercel isolates cannot exhaust MariaDB.
+// Cap below mysql2's default of 10 so each Vercel isolate opens at most 3
+// connections. The limit is per isolate, not global: concurrent isolates
+// can still add up toward the database connection cap.
 // idleTimeout only runs in mysql2 when maxIdle < connectionLimit.
 const RUNTIME_MYSQL_CONNECTION_LIMIT = 3;
 const RUNTIME_MYSQL_MAX_IDLE = 2;
