@@ -1,5 +1,7 @@
 # Vinculación de profesionales
 
+Contrato vigente, montado por el proceso de `backend-node`. Índice: [`backend-node/README.md`](../../README.md). Rutas: [`openapi.yaml`](../../openapi.yaml).
+
 Una persona administradora con membresía activa emite un token aleatorio por perfil activo y sin vincular. La base conserva su SHA-256. El token caduca a los siete días y puede consumirse una sola vez. El responsable recibe el token para compartirlo por un canal privado. El enlace de producto lleva el token en el fragmento, que el cliente elimina al leerlo. Mantenerlo fuera de la ruta, la consulta, los registros y las analíticas. La persona invitada inicia sesión y envía el token en el cuerpo POST.
 
 Rutas disponibles para montaje en `/api/invitations`:
