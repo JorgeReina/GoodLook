@@ -3,6 +3,12 @@ import type { PageLimit } from './pagination.js';
 
 export const PAGE_EXPOSE_HEADERS = 'X-Has-More, Link';
 
+function relativeCatalogPath(req: Request): string {
+  const combined = `${req.baseUrl}${req.path}`;
+  if (combined.startsWith('/') && !combined.includes('://')) return combined;
+  return req.path.startsWith('/') ? req.path : `/${req.path}`;
+}
+
 export function applyCatalogPageHeaders(req: Request, res: Response, page: PageLimit, hasMore: boolean) {
   res.setHeader('X-Has-More', hasMore ? 'true' : 'false');
   if (hasMore) {
@@ -13,7 +19,7 @@ export function applyCatalogPageHeaders(req: Request, res: Response, page: PageL
     }
     params.set('page', String(page.page + 1));
     params.set('limit', String(page.limit));
-    const path = (req.originalUrl.split('?')[0] || req.path);
+    const path = relativeCatalogPath(req);
     res.setHeader('Link', `<${path}?${params.toString()}>; rel="next"`);
   }
   // Same-origin today (no CORS middleware). Expose so a future CORS layer

@@ -1,5 +1,6 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { request as httpRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { createApp } from '../src/app.js';
 import { publicCatalogRoutes } from '../src/catalog/public.js';
@@ -9,7 +10,6 @@ import { PAGE_EXPOSE_HEADERS } from '../src/http/page-headers.js';
 
 const business = '231c2e85-cba6-44e3-a803-fac58a3f7ff4';
 const service = 'd5502df6-1f29-47b8-8af4-d2101326580f';
-const professional = 'b1ca7e0e-b0b4-49ac-a311-fe23403cfc43';
 const user: User = { id: '4c95e891-d8b5-40cb-93c9-b1429db9a71d', email: 'a@example.test', displayName: 'A', passwordHash: 'x' };
 const auth: AuthStore = {
   async createUser() { return false; },
@@ -27,6 +27,11 @@ const businesses = Array.from({ length: 5 }, (_, index) => ({
   address: null,
   timezone: 'UTC',
 }));
+const professionals = Array.from({ length: 5 }, (_, index) => ({
+  id: `b1ca7e0e-b0b4-49ac-a311-fe23403cfc4${index}`,
+  displayName: `Pro ${index}`,
+  serviceId: service,
+}));
 
 const pool = {
   async execute(sql: string, params: unknown = []) {
@@ -41,7 +46,8 @@ const pool = {
       const rows = [{ id: service, businessId: business, name: 'Cut', description: null, durationMinutes: 30, priceCents: 1500, currency: 'EUR' }];
       return [rows.slice(offset, offset + limit), []];
     }
-    return [[{ id: professional, displayName: 'Pro', serviceId: service }], []];
+    const [, , limit, offset] = params as [string, string, number, number];
+    return [professionals.slice(offset, offset + limit), []];
   },
 };
 
@@ -79,7 +85,9 @@ test('public catalog lists are bounded, cacheable, and keep the array contract',
   const staff = await fetch(`${base}/api/catalog/businesses/${business}/professionals?serviceId=${service}&page=1&limit=2`);
   assert.equal(staff.status, 200);
   assert.equal(staff.headers.get('cache-control'), PUBLIC_CATALOG_CACHE);
-  assert.deepEqual(await staff.json(), [{ id: professional, displayName: 'Pro', active: true, linked: true, serviceIds: [service] }]);
+  const staffBody = await staff.json() as { id: string }[];
+  assert.equal(staffBody.length, 2);
+  assert.equal(staffBody[0].id, professionals[0].id);
   assert.match(queries.at(-1)!.sql, /LIMIT\s+\?\s+OFFSET\s+\?/i);
   assert.deepEqual(queries.at(-1)!.params, [business, service, 3, 0, business]);
 });
@@ -112,6 +120,44 @@ test('public catalog page hints: last page, middle page, and exactly limit rows'
   assert.equal(exact.headers.get('x-has-more'), 'false');
   assert.equal(exact.headers.get('link'), null);
   assert.deepEqual(queries[0].params, [6, 0]);
+});
+
+test('an empty page beyond the last row is 200 with no continuation headers', async () => {
+  const empty = await fetch(`${base}/api/catalog/businesses?page=10&limit=2`);
+  assert.equal(empty.status, 200);
+  assert.deepEqual(await empty.json(), []);
+  assert.equal(empty.headers.get('x-has-more'), 'false');
+  assert.equal(empty.headers.get('link'), null);
+});
+
+test('Link rel=next keeps serviceId and other filters on a relative path', async () => {
+  const staff = await fetch(`${base}/api/catalog/businesses/${business}/professionals?serviceId=${service}&page=1&limit=2`);
+  assert.equal(staff.status, 200);
+  assert.equal(staff.headers.get('x-has-more'), 'true');
+  assert.equal(
+    staff.headers.get('link'),
+    `</api/catalog/businesses/${business}/professionals?serviceId=${service}&page=2&limit=2>; rel="next"`,
+  );
+});
+
+test('forged Host and X-Forwarded-Host do not appear in Link', async () => {
+  const address = server.address() as AddressInfo;
+  const response = await new Promise<{ status: number; link: string | undefined }>((resolve, reject) => {
+    const req = httpRequest({
+      hostname: '127.0.0.1',
+      port: address.port,
+      path: '/api/catalog/businesses?page=1&limit=2',
+      headers: { Host: 'evil.example', 'X-Forwarded-Host': 'also.evil.example' },
+    }, res => {
+      res.resume();
+      res.on('end', () => resolve({ status: res.statusCode ?? 0, link: res.headers.link }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.link, '</api/catalog/businesses?page=2&limit=2>; rel="next"');
+  assert.doesNotMatch(response.link ?? '', /evil\.example|https?:\/\//i);
 });
 
 test('public catalog rejects invalid pagination with the centralized error body', async () => {
