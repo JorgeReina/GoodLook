@@ -1,0 +1,119 @@
+import { Router, type Request, type Response } from 'express';
+import type { Pool, RowDataPacket } from 'mysql2/promise';
+import { PUBLIC_CATALOG_CACHE } from '../http/cache-control.js';
+import { applyCatalogPageHeaders } from '../http/page-headers.js';
+import { parsePageLimit, probeLimit, takePage } from '../http/pagination.js';
+
+interface Staff {
+  id: string;
+  displayName: string;
+  active: true;
+  linked: true;
+  serviceIds: string[];
+}
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const offers = `FROM businesses b JOIN services s ON s.business_id=b.id AND s.active=TRUE
+  JOIN professional_services ps ON ps.business_id=s.business_id AND ps.service_id=s.id AND ps.active=TRUE
+  JOIN professionals p ON p.business_id=ps.business_id AND p.id=ps.professional_id AND p.active=TRUE
+  JOIN memberships m ON m.business_id=p.business_id AND m.user_id=p.user_id AND m.status='active'
+  WHERE b.is_public=TRUE AND EXISTS (SELECT 1 FROM working_hours h WHERE h.business_id=p.business_id AND h.professional_id=p.id)`;
+
+function toPublicBusiness(row: RowDataPacket) {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    sector: (row.sector ?? null) as string | null,
+    address: (row.address ?? null) as string | null,
+    timezone: row.timezone as string,
+  };
+}
+
+function sendPublic(req: Request, res: Response, page: NonNullable<ReturnType<typeof parsePageLimit>>, rows: unknown[]) {
+  const { items, hasMore } = takePage(rows, page);
+  applyCatalogPageHeaders(req, res, page, hasMore);
+  res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
+  res.json(items);
+}
+
+function sendCatalogError(res: Response, status: number, code: 'invalid_input' | 'not_found') {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(status).json({ code });
+}
+
+function pageFrom(req: Request) {
+  return parsePageLimit(req.query);
+}
+
+export function publicCatalogRoutes(pool: Pool) {
+  const router = Router();
+  router.get('/businesses', async (req, res) => {
+    const page = pageFrom(req);
+    if (!page) { sendCatalogError(res, 400, 'invalid_input'); return; }
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT id,name,sector,address,timezone FROM businesses WHERE is_public=TRUE ORDER BY name,id LIMIT ? OFFSET ?',
+      [probeLimit(page), page.offset],
+    );
+    sendPublic(req, res, page, rows.map(toPublicBusiness));
+  });
+  router.get('/businesses/:id/services', async (req, res) => {
+    const businessId = req.params.id.toLowerCase();
+    const page = pageFrom(req);
+    if (!uuid.test(businessId) || !page) { sendCatalogError(res, 400, 'invalid_input'); return; }
+    if (!await isPublished(pool, businessId)) { sendCatalogError(res, 404, 'not_found'); return; }
+    const [rows] = await pool.execute<RowDataPacket[]>(`SELECT DISTINCT s.id,s.business_id AS businessId,s.name,s.description,
+      s.duration_minutes AS durationMinutes,s.price_cents AS priceCents,s.currency ${offers} AND b.id=? ORDER BY s.name,s.id LIMIT ? OFFSET ?`,
+    [businessId, probeLimit(page), page.offset]);
+    sendPublic(req, res, page, rows.map(row => ({ ...row, active: true })));
+  });
+  router.get('/businesses/:id/professionals', async (req, res) => {
+    const businessId = req.params.id.toLowerCase();
+    const service = req.query.serviceId;
+    const page = pageFrom(req);
+    if (!uuid.test(businessId) || typeof service !== 'string' || !uuid.test(service) || !page) {
+      sendCatalogError(res, 400, 'invalid_input');
+      return;
+    }
+    if (!await isPublished(pool, businessId)) { sendCatalogError(res, 404, 'not_found'); return; }
+    const serviceId = service.toLowerCase();
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      `SELECT p.id,p.display_name AS displayName,s.id AS serviceId FROM (
+        SELECT p.id,p.display_name ${offers}
+          AND b.id=? AND EXISTS (SELECT 1 FROM professional_services selected JOIN services wanted
+            ON wanted.business_id=selected.business_id AND wanted.id=selected.service_id AND wanted.active=TRUE
+            WHERE selected.business_id=b.id AND selected.professional_id=p.id AND selected.active=TRUE AND selected.service_id=?)
+        GROUP BY p.id,p.display_name
+        ORDER BY p.display_name,p.id
+        LIMIT ? OFFSET ?
+      ) p
+      JOIN professional_services ps ON ps.business_id=? AND ps.professional_id=p.id AND ps.active=TRUE
+      JOIN services s ON s.business_id=ps.business_id AND s.id=ps.service_id AND s.active=TRUE
+      ORDER BY p.display_name,p.id,s.id`,
+      [businessId, serviceId, probeLimit(page), page.offset, businessId],
+    );
+    const staff = new Map<string, Staff>();
+    for (const row of rows) {
+      const professional: Staff = staff.get(row.id) ?? { id: row.id, displayName: row.displayName, active: true, linked: true, serviceIds: [] };
+      professional.serviceIds.push(row.serviceId);
+      staff.set(row.id, professional);
+    }
+    sendPublic(req, res, page, [...staff.values()]);
+  });
+  router.get('/businesses/:id', async (req, res) => {
+    const businessId = req.params.id.toLowerCase();
+    if (!uuid.test(businessId)) { sendCatalogError(res, 400, 'invalid_input'); return; }
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      'SELECT id,name,sector,address,timezone FROM businesses WHERE id=? AND is_public=TRUE',
+      [businessId],
+    );
+    if (!rows[0]) { sendCatalogError(res, 404, 'not_found'); return; }
+    res.setHeader('Cache-Control', PUBLIC_CATALOG_CACHE);
+    res.json(toPublicBusiness(rows[0]));
+  });
+  return router;
+}
+
+async function isPublished(pool: Pool, id: string): Promise<boolean> {
+  const [rows] = await pool.execute<RowDataPacket[]>('SELECT id FROM businesses WHERE id=? AND is_public=TRUE', [id]);
+  return rows.length > 0;
+}

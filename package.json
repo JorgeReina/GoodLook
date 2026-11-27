@@ -1,0 +1,10 @@
+{
+  "name": "goodlook-vercel-pilot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "build": "npm ci --prefix FrontEndGoodLook --ignore-scripts --no-audit --no-fund && npm run build --prefix FrontEndGoodLook -- --configuration=pilot && npm run build --prefix FrontEndGoodLook -- --configuration=product --base-href=/producto/ --output-path=dist/front-end-good-look/producto && node scripts/verify-product-package.mjs"
+  },
+  "dependencies": { "express": "^5.3.0", "mysql2": "^3.24.0" }
+}

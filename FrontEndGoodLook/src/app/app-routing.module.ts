@@ -9,6 +9,7 @@ import { Calendar2Component } from './calendar2/calendar2.component';
 import { DatelistComponent } from './datelist/datelist.component';
 
 const routes: Routes = [
+  { path: 'piloto', loadComponent: () => import('./pilot/pilot.component').then(m => m.PilotComponent) },
   { path: 'home', component: Calendar2Component},
   { path: 'datelist', component: DatelistComponent},
   { path: 'sign-up', component: SignupComponent},

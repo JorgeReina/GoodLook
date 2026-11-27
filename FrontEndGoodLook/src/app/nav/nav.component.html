@@ -3,11 +3,10 @@
     <a class="group1" routerLink="/home">Home</a>
     <a class="group1" routerLink="/datelist">Dates</a>
     <a class="group1" routerLink="/profile">Profile</a>
-    <ng-container *ngIf="isLogged; else signInLink">
+    @if (isLogged) {
       <a [routerLink]="'/profile'" class="signin">{{ data.name }}</a>
-    </ng-container>
-    <ng-template #signInLink>
+    } @else {
       <a [routerLink]="'/sign-in'" class="signin">Sign In</a>
-    </ng-template>
+    }
   </nav>
 </div>

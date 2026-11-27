@@ -1,0 +1,148 @@
+<h1 tabindex="-1">Gestión</h1>
+<div class="gl-actions">
+  @if (memberships().length) {
+    <label>Negocio
+      <select #shop (change)="selectBusiness(shop.value)" [disabled]="busy() || !!impact()">
+        @for (item of memberships(); track item.businessId) {
+          <option [value]="item.businessId" [selected]="item.businessId === businessId()">{{ item.businessName }}</option>
+        }
+      </select>
+    </label>
+  }
+  @if (!creating()) { <button matButton="outlined" type="button" (click)="beginCreate()" [disabled]="busy() || !!impact()">Crear negocio</button> }
+  @if (creating() && businessId()) { <button type="button" (click)="selectBusiness(businessId())" [disabled]="busy()">Volver al negocio</button> }
+</div>
+@if (error()) { <gl-status kind="error">{{ error() }}</gl-status> }
+@if (feedback()) { <gl-status>{{ feedback() }}</gl-status> }
+@if (busy()) { <gl-status>Procesando…</gl-status> }
+@if (impact(); as warning) {
+  <div #impactNotice class="gl-work-panel" role="alert" tabindex="-1">
+    <p>El cambio afecta a {{ warning.affectedCount }} citas próximas. Las citas se conservan.</p>
+    <div class="gl-actions">
+      <button type="button" (click)="confirmImpact(warning)" [disabled]="busy()">Confirmar cambio</button>
+      <button type="button" (click)="impact.set(null)" [disabled]="busy()">Volver a revisar</button>
+    </div>
+  </div>
+}
+<fieldset class="gl-management-editor" [disabled]="busy() || !!impact()">
+@if (creating() || (detail() && owner())) {
+  <section class="gl-work-panel">
+    <h2>{{ creating() ? 'Nuevo negocio' : 'Ficha del negocio' }}</h2>
+    <form class="gl-grid-form" #profileForm="ngForm" (ngSubmit)="saveProfile()">
+      <label>Nombre<input name="name" [(ngModel)]="profile.name" required maxlength="160"></label>
+      <label>Sector<input name="sector" [(ngModel)]="profile.sector" required maxlength="80"></label>
+      <label>Dirección<input name="address" [(ngModel)]="profile.address" required maxlength="250"></label>
+      <label>Zona horaria IANA<input name="timezone" [(ngModel)]="profile.timezone" required placeholder="Europe/Madrid"></label>
+      <button matButton="filled" type="submit" [disabled]="busy() || !profileForm.valid">{{ creating() ? 'Crear ficha privada' : 'Guardar ficha' }}</button>
+    </form>
+  </section>
+}
+@if (!creating()) {
+  @if (detail(); as shop) {
+    <section class="gl-work-panel">
+      <h2>{{ shop.business.name }}</h2>
+      <p>{{ shop.business.isPublic ? 'Ficha pública' : 'Ficha privada' }} · {{ shop.business.timezone }}</p>
+      @if (owner()) {
+        <button type="button" (click)="toggleVisibility(shop.business)" [disabled]="busy()">{{ shop.business.isPublic ? 'Ocultar ficha' : 'Publicar ficha' }}</button>
+      }
+    </section>
+    <section class="gl-work-panel">
+      <h2>Servicios</h2>
+      @if (!shop.services.length) { <gl-status kind="empty">Todavía no hay servicios.</gl-status> }
+      <div class="gl-actions">
+        @for (item of shop.services; track item.id) {
+          <button type="button" (click)="editService(item.id)" [disabled]="busy()">{{ item.name }}{{ item.active ? '' : ' · Inactivo' }}</button>
+        }
+        <button type="button" (click)="editService('')" [disabled]="busy()">Nuevo servicio</button>
+      </div>
+      <h3>{{ service.id ? 'Editar servicio' : 'Crear servicio' }}</h3>
+      <form class="gl-grid-form" #serviceForm="ngForm" (ngSubmit)="saveService()">
+        <label>Nombre del servicio<input name="serviceName" [(ngModel)]="service.name" maxlength="160" required></label>
+        <label>Descripción<input name="description" [(ngModel)]="service.description" maxlength="500"></label>
+        <label>Duración en minutos<input type="number" name="duration" [(ngModel)]="service.durationMinutes" min="1" max="65535" step="1" required></label>
+        <label>Precio<input name="price" inputmode="decimal" [(ngModel)]="service.price" placeholder="19,99" required></label>
+        <label>Moneda<input name="currency" [(ngModel)]="service.currency" maxlength="3" pattern="[A-Za-z]{3}" required></label>
+        @if (service.id) { <label class="gl-checkbox"><input type="checkbox" name="serviceActive" [(ngModel)]="service.active"> Servicio activo</label> }
+        <button matButton="filled" type="submit" [disabled]="busy() || !serviceForm.valid">Guardar servicio</button>
+      </form>
+    </section>
+    <section class="gl-work-panel">
+      <h2>Equipo</h2>
+      <form class="gl-grid-form" #staffForm="ngForm" (ngSubmit)="addStaff()">
+        <label>Nombre público del profesional<input name="staffName" [(ngModel)]="staffName" required maxlength="120"></label>
+        <button matButton="filled" type="submit" [disabled]="busy() || !staffForm.valid">Añadir profesional</button>
+      </form>
+      @if (shop.staff.length) {
+        <label>Profesional
+          <select #member (change)="selectStaff(member.value)" [disabled]="busy()">
+            @for (item of shop.staff; track item.id) {
+              <option [value]="item.id" [selected]="item.id === selectedStaff()">{{ item.displayName }}{{ item.active ? '' : ' · Inactivo' }}</option>
+            }
+          </select>
+        </label>
+      }
+      @if (staff(); as member) {
+        <div class="gl-actions">
+          <label>Editar nombre<input [(ngModel)]="staffEditName" maxlength="120"></label>
+          <button type="button" (click)="saveStaff(member.active)" [disabled]="busy() || !staffEditName.trim()">Guardar nombre</button>
+          <button type="button" (click)="saveStaff(!member.active)" [disabled]="busy()">{{ member.active ? 'Desactivar profesional' : 'Activar profesional' }}</button>
+        </div>
+        @if (member.active && !member.linked) {
+          <div class="gl-actions">
+            <button type="button" (click)="invite()" [disabled]="busy()">Generar invitación</button>
+            <button type="button" (click)="revokeInvitation()" [disabled]="busy()">Revocar invitación</button>
+          </div>
+          @if (invitation()) {
+            <label>Enlace de un solo uso<input [value]="invitation()" readonly></label>
+            <button type="button" (click)="copyInvitation()">Copiar enlace</button>
+          }
+        } @else if (member.linked) { <p>Cuenta vinculada</p> }
+        <fieldset [disabled]="busy() || !scheduleReady()">
+          <legend>Servicios asignados</legend>
+          @for (item of shop.services; track item.id) {
+            <label class="gl-checkbox"><input type="checkbox" #assignedBox [checked]="assigned.includes(item.id)"
+              (change)="toggleAssignment(item.id, assignedBox.checked)">{{ item.name }}</label>
+          }
+          <button type="button" (click)="saveAssignments()">Guardar asignaciones</button>
+        </fieldset>
+        <fieldset [disabled]="busy() || !scheduleReady()">
+          <legend>Horario habitual</legend>
+          @for (hour of hours; track $index; let i = $index) {
+            <div class="gl-grid-form">
+              <label>Día
+                <select [(ngModel)]="hour.weekday">
+                  @for (day of weekdays; track day; let d = $index) { <option [ngValue]="d + 1">{{ day }}</option> }
+                </select>
+              </label>
+              <label>Desde<input [(ngModel)]="hour.startTime" maxlength="5" placeholder="09:00"></label>
+              <label>Hasta<input [(ngModel)]="hour.endTime" maxlength="5" placeholder="17:00"></label>
+              <button type="button" (click)="removeHour(i)">Quitar tramo {{ i + 1 }}</button>
+            </div>
+          }
+          <div class="gl-actions">
+            <button type="button" (click)="addHour()">Añadir tramo</button>
+            <button type="button" (click)="saveHours()">Guardar horario</button>
+          </div>
+        </fieldset>
+        <fieldset [disabled]="busy() || !scheduleReady()">
+          <legend>Cierres · {{ shop.business.timezone }}</legend>
+          @for (closure of closures; track closure.id) {
+            <p>{{ localTime(closure.startAt, shop.business.timezone) }}–{{ localTime(closure.endAt, shop.business.timezone) }}
+              <button type="button" (click)="removeClosure(closure.id)">Retirar cierre</button>
+            </p>
+          }
+          <div class="gl-grid-form">
+            <label>Inicio<input type="datetime-local" [(ngModel)]="closureStart"></label>
+            <label>Fin<input type="datetime-local" [(ngModel)]="closureEnd"></label>
+            <button type="button" (click)="addClosure(shop.business.timezone)">Añadir cierre</button>
+          </div>
+        </fieldset>
+        <h3>Agenda de {{ member.displayName }}</h3>
+        <gl-agenda-week [businessId]="shop.business.id" [professionalId]="member.id" [timezone]="shop.business.timezone" [revision]="revision()" />
+      }
+    </section>
+  } @else if (!busy() && businessId()) {
+    <button type="button" (click)="selectBusiness(businessId())">Volver a cargar el negocio</button>
+  }
+}
+</fieldset>

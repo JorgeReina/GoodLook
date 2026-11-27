@@ -1,0 +1,75 @@
+name: GoodLook product checks
+
+on:
+  push:
+    branches: [main, work/goodlook-migracion]
+  pull_request:
+    branches: [main, work/goodlook-migracion]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  product:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend-node/package-lock.json
+            FrontEndGoodLook/package-lock.json
+      - name: Build pilot and product
+        run: npm run build
+      - name: Build and test the API
+        working-directory: backend-node
+        run: |
+          npm ci --no-audit --no-fund
+          npm run lint:openapi
+          npm run build
+          npm test
+          node --test db/tests/*.test.mjs
+      - name: Install Chromium
+        working-directory: FrontEndGoodLook
+        run: npx playwright install --with-deps chromium
+      # Karma ejecuta el producto y el piloto. Los specs de la aplicación
+      # heredada (NgModule, fuera de src/app/product y src/app/pilot) quedan
+      # excluidos a propósito y no se reparan en este flujo. Los 6 que fallan
+      # están en https://github.com/JorgeReina/GoodLook/issues/26
+      # El código heredado está congelado hasta su retirada en
+      # https://github.com/JorgeReina/GoodLook/issues/34
+      - name: Test Angular product and pilot
+        working-directory: FrontEndGoodLook
+        run: |
+          export GOODLOOK_CHROMIUM_PATH="$(node -e 'process.stdout.write(require("@playwright/test").chromium.executablePath())')"
+          # The hosted runner blocks Chromium's unprivileged namespaces.
+          export CHROME_BIN="$(mktemp)"
+          trap 'rm -f "$CHROME_BIN"' EXIT
+          cat > "$CHROME_BIN" <<'EOF'
+          #!/bin/sh
+          exec "$GOODLOOK_CHROMIUM_PATH" --no-sandbox "$@"
+          EOF
+          chmod +x "$CHROME_BIN"
+          npm test -- --watch=false --browsers=ChromeHeadless --include='src/app/product/**/*.spec.ts' --include='src/app/pilot/**/*.spec.ts'
+      - name: MySQL and MariaDB integration
+        working-directory: backend-node
+        run: |
+          bash ./scripts/test-mysql-integration.sh mysql
+          bash ./scripts/test-mysql-integration.sh mariadb
+      - name: Product browser acceptance
+        working-directory: FrontEndGoodLook
+        run: |
+          set +e
+          export GOODLOOK_PORT_INSPECT_LOG="${RUNNER_TEMP:-/tmp}/goodlook-ports.log"
+          : > "$GOODLOOK_PORT_INSPECT_LOG"
+          npm run test:e2e
+          status=$?
+          echo '--- NetworkSettings.Ports observado por el arnés ---'
+          cat "$GOODLOOK_PORT_INSPECT_LOG"
+          exit "$status"
