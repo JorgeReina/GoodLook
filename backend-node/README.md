@@ -51,6 +51,8 @@ npm start
 
 En el despliegue del paquete, `api/index.ts` exporta la misma aplicación y no ejecuta `npm start`. `APP_ORIGIN` es el origen HTTPS del sitio, `MYSQL_TLS=true` y el secreto viven en el entorno de la plataforma. No subas un archivo `.env`.
 
+El runtime abre un pool `mysql2` con `connectionLimit: 3`, `maxIdle: 2` e `idleTimeout: 5000` (ms). Ese tope es por isolate, no global: varios isolates concurrentes pueden acercarse al cupo de la base. `maxIdle` va por debajo de `connectionLimit` porque, si no, mysql2 no aplica el `idleTimeout`.
+
 Comprobación mínima con el proceso en marcha:
 
 ```bash
