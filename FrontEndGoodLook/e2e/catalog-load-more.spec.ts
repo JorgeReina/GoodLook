@@ -43,8 +43,8 @@ test('abre un negocio que no está en la primera página del listado', async ({ 
     await expect(page.getByRole('link', { name: 'Barbería Norte' })).toHaveCount(0);
     await page.goto(product.url + 'negocios/norte');
     await expect(page.getByRole('heading', { name: 'Barbería Norte' })).toBeVisible();
-    await expect(page.getByText('Corte Norte')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Reservar Corte Norte/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Corte Norte' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Reservar Corte Norte' })).toBeVisible();
   } finally {
     await context.close();
   }
