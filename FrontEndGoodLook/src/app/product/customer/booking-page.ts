@@ -105,7 +105,7 @@ export class BookingPage {
       services: this.api.services(draft.businessId),
     }).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: ({ businesses, services }) => {
-        const business = businesses.find(item => item.id === draft.businessId);
+        const business = businesses.items.find(item => item.id === draft.businessId);
         if (!business) {
           this.catalogState.set('missing');
           return;

@@ -75,7 +75,7 @@ export class BusinessPage {
           const id = (params.get('id') ?? '').toLowerCase();
           return forkJoin({ businesses: this.api.businesses(), services: this.api.services(id) })
             .pipe(
-              map(({ businesses, services }) => ({ business: businesses.find(item => item.id === id), services })),
+              map(({ businesses, services }) => ({ business: businesses.items.find(item => item.id === id), services })),
               catchError((error: unknown) => of(error instanceof HttpErrorResponse && [400, 404].includes(error.status)
                 ? 'missing' as const : 'error' as const)),
             );
